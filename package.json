@@ -8,7 +8,8 @@
     "build:es5": "webpack --config webpack.es5.config.js",
     "build:watch": "webpack -w",
     "open": "open-cli ./public/index.html",
-    "dev": "run-p bundle:watch open"
+    "dev": "run-p bundle:watch open",
+    "start": "node public/app.bundled.js"
   },
   "repository": {
     "type": "git",
