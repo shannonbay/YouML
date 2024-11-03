@@ -1,0 +1,1 @@
+import{getAnchorPointAdjustment}from"./LayoutUtil";export function getConnectionAdjustment(t,n,o,e){return getAnchorPointAdjustment(t,n,o,e).point}

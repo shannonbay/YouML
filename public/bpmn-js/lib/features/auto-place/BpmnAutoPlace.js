@@ -1,0 +1,1 @@
+import{getNewShapePosition}from"./BpmnAutoPlaceUtil";export default function AutoPlace(e,t){e.on("autoPlace",(function(e){var o=e.shape,n=e.source;return getNewShapePosition(n,o,t)}))}AutoPlace.$inject=["eventBus","elementRegistry"];

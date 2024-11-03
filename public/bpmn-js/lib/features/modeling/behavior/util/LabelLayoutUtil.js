@@ -1,0 +1,1 @@
+import{findNewLineStartIndex,getAnchorPointAdjustment}from"./LayoutUtil";import{getMid}from"diagram-js/lib/layout/LayoutUtil";export function findNewLabelLineStartIndex(t,e,n,i){return findNewLineStartIndex(t,e,n,i)}export function getLabelAdjustment(t,e,n,i){var r=getMid(t);return getAnchorPointAdjustment(r,e,n,i).delta}

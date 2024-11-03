@@ -1,0 +1,1 @@
+export function elementToString(e){return e?"<"+e.$type+(e.id?' id="'+e.id:"")+'" />':"<null>"}

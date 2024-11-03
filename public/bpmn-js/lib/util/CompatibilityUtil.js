@@ -1,0 +1,1 @@
+import{has}from"min-dash";var DI_ERROR_MESSAGE="Tried to access di from the businessObject. The di is available through the diagram element only. For more information, see https://github.com/bpmn-io/bpmn-js/issues/1472";export function ensureCompatDiRef(e){has(e,"di")||Object.defineProperty(e,"di",{enumerable:!1,get:function(){throw new Error(DI_ERROR_MESSAGE)}})}
