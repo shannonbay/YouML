@@ -1,25 +1,18 @@
-import 'bpmn-js/dist/assets/diagram-js.css';
-import 'bpmn-js/dist/assets/bpmn-js.css';
-
-import 'bpmn-js/dist/assets/bpmn-font/css/bpmn-embedded.css';
-
 import '../stylesheets/style.css';
 
 import $ from 'jquery';
 
-import BpmnModeler from 'bpmn-js/lib/Modeler';
 
 import diagramXML from '../resources/newDiagram.bpmn';
 
+var plantumlEncoder = require('plantuml-encoder')
+
+var encoded = plantumlEncoder.encode('A -> B: Hello')
+console.log(encoded) // SrJGjLDmibBmICt9oGS0
+
+var url = 'http://www.plantuml.com/plantuml/img/' + encoded
 
 var container = $('#js-drop-zone');
-
-var modeler = new BpmnModeler({
-  container: '#js-canvas',
-  keyboard: {
-    bindTo: window
-  }
-});
 
 function createNewDiagram() {
   openDiagram(diagramXML);
