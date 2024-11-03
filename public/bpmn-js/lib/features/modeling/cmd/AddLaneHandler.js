@@ -1,1 +1,192 @@
-import{filter}from"min-dash";import{eachElement}from"diagram-js/lib/util/Elements";import{getLanesRoot,getChildLanes,LANE_INDENTATION}from"../util/LaneUtil";import{isHorizontal}from"../../../util/DiUtil";export default function AddLaneHandler(t,e){this._modeling=t,this._spaceTool=e}AddLaneHandler.$inject=["modeling","spaceTool"],AddLaneHandler.prototype.preExecute=function(t){var e=this._spaceTool,i=this._modeling,o=t.shape,a=t.location,n=getLanesRoot(o),h=n===o,l=h?o:o.parent,r=getChildLanes(l),N=isHorizontal(o);if(N?"left"===a?a="top":"right"===a&&(a="bottom"):"top"===a?a="left":"bottom"===a&&(a="right"),!r.length){var p=N?{x:o.x+LANE_INDENTATION,y:o.y,width:o.width-LANE_INDENTATION,height:o.height}:{x:o.x,y:o.y+LANE_INDENTATION,width:o.width,height:o.height-LANE_INDENTATION};i.createShape({type:"bpmn:Lane",isHorizontal:N},p,l)}var d,s,m,g,A,E=[];eachElement(n,(function(t){return E.push(t),t.label&&E.push(t.label),t===o?[]:filter(t.children,(function(t){return t!==o}))})),"top"===a?(d=-120,m=(s=o.y)+10,g="n",A="y"):"left"===a?(d=-120,m=(s=o.x)+10,g="w",A="x"):"bottom"===a?(d=120,m=(s=o.y+o.height)-10,g="s",A="y"):"right"===a&&(d=120,m=(s=o.x+o.width)-10,g="e",A="x");var T=e.calculateAdjustments(E,A,d,m),L=N?{x:0,y:d}:{x:d,y:0};e.makeSpace(T.movingShapes,T.resizingShapes,L,g,m);var c=N?{x:o.x+(h?LANE_INDENTATION:0),y:s-("top"===a?120:0),width:o.width-(h?LANE_INDENTATION:0),height:120}:{x:s-("left"===a?120:0),y:o.y+(h?LANE_INDENTATION:0),width:120,height:o.height-(h?LANE_INDENTATION:0)};t.newLane=i.createShape({type:"bpmn:Lane",isHorizontal:N},c,l)};
+import {
+  filter
+} from 'min-dash';
+
+import {
+  eachElement
+} from 'diagram-js/lib/util/Elements';
+
+import {
+  getLanesRoot,
+  getChildLanes,
+  LANE_INDENTATION
+} from '../util/LaneUtil';
+
+import {
+  isHorizontal
+} from '../../../util/DiUtil';
+
+/**
+ * @typedef {import('diagram-js/lib/command/CommandHandler').default} CommandHandler
+ *
+ * @typedef {import('../Modeling').default} Modeling
+ * @typedef {import('../../space-tool/BpmnSpaceTool').default} SpaceTool
+ */
+
+/**
+ * A handler that allows us to add a new lane
+ * above or below an existing one.
+ *
+ * @implements {CommandHandler}
+ *
+ * @param {Modeling} modeling
+ * @param {SpaceTool} spaceTool
+ */
+export default function AddLaneHandler(modeling, spaceTool) {
+  this._modeling = modeling;
+  this._spaceTool = spaceTool;
+}
+
+AddLaneHandler.$inject = [
+  'modeling',
+  'spaceTool'
+];
+
+
+AddLaneHandler.prototype.preExecute = function(context) {
+
+  var spaceTool = this._spaceTool,
+      modeling = this._modeling;
+
+  var shape = context.shape,
+      location = context.location;
+
+  var lanesRoot = getLanesRoot(shape);
+
+  var isRoot = lanesRoot === shape,
+      laneParent = isRoot ? shape : shape.parent;
+
+  var existingChildLanes = getChildLanes(laneParent);
+
+  var isHorizontalLane = isHorizontal(shape);
+
+  // never mix up horizontal/vertical lanes
+  if (isHorizontalLane) {
+    if (location === 'left') {
+      location = 'top';
+    } else
+    if (location === 'right') {
+      location = 'bottom';
+    }
+  } else {
+    if (location === 'top') {
+      location = 'left';
+    } else
+    if (location === 'bottom') {
+      location = 'right';
+    }
+  }
+
+  // (0) add a lane if we currently got none and are adding to root
+  if (!existingChildLanes.length) {
+    var siblingPosition = isHorizontalLane ? {
+      x: shape.x + LANE_INDENTATION,
+      y: shape.y,
+      width: shape.width - LANE_INDENTATION,
+      height: shape.height
+    } : {
+      x: shape.x,
+      y: shape.y + LANE_INDENTATION,
+      width: shape.width,
+      height: shape.height - LANE_INDENTATION
+    };
+
+    modeling.createShape(
+      {
+        type: 'bpmn:Lane',
+        isHorizontal: isHorizontalLane
+      },
+      siblingPosition,
+      laneParent
+    );
+  }
+
+  // (1) collect affected elements to create necessary space
+  var allAffected = [];
+
+  eachElement(lanesRoot, function(element) {
+    allAffected.push(element);
+
+    // handle element labels in the diagram root
+    if (element.label) {
+      allAffected.push(element.label);
+    }
+
+    if (element === shape) {
+      return [];
+    }
+
+    return filter(element.children, function(c) {
+      return c !== shape;
+    });
+  });
+
+  var offset,
+      lanePosition,
+      spacePos,
+      direction,
+      axis;
+
+  if (location === 'top') {
+    offset = -120;
+    lanePosition = shape.y;
+    spacePos = lanePosition + 10;
+    direction = 'n';
+    axis = 'y';
+  } else
+  if (location === 'left') {
+    offset = -120;
+    lanePosition = shape.x;
+    spacePos = lanePosition + 10;
+    direction = 'w';
+    axis = 'x';
+  } else
+  if (location === 'bottom') {
+    offset = 120;
+    lanePosition = shape.y + shape.height;
+    spacePos = lanePosition - 10;
+    direction = 's';
+    axis = 'y';
+  } else
+  if (location === 'right') {
+    offset = 120;
+    lanePosition = shape.x + shape.width;
+    spacePos = lanePosition - 10;
+    direction = 'e';
+    axis = 'x';
+  }
+
+  var adjustments = spaceTool.calculateAdjustments(allAffected, axis, offset, spacePos);
+
+  var delta = isHorizontalLane ? { x: 0, y: offset } : { x: offset, y: 0 };
+
+  spaceTool.makeSpace(
+    adjustments.movingShapes,
+    adjustments.resizingShapes,
+    delta,
+    direction,
+    spacePos
+  );
+
+  // (2) create new lane at open space
+  var newLanePosition = isHorizontalLane ? {
+    x: shape.x + (isRoot ? LANE_INDENTATION : 0),
+    y: lanePosition - (location === 'top' ? 120 : 0),
+    width: shape.width - (isRoot ? LANE_INDENTATION : 0),
+    height: 120
+  } : {
+    x: lanePosition - (location === 'left' ? 120 : 0),
+    y: shape.y + (isRoot ? LANE_INDENTATION : 0),
+    width: 120,
+    height: shape.height - (isRoot ? LANE_INDENTATION : 0)
+  };
+
+  context.newLane = modeling.createShape(
+    {
+      type: 'bpmn:Lane',
+      isHorizontal: isHorizontalLane
+    },
+    newLanePosition,
+    laneParent
+  );
+};

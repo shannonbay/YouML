@@ -1,1 +1,22 @@
-define(["../core","../ajax","../event"],(function(a){"use strict";a.each(["ajaxStart","ajaxStop","ajaxComplete","ajaxError","ajaxSuccess","ajaxSend"],(function(e,n){a.fn[n]=function(a){return this.on(n,a)}}))}));
+define( [
+	"../core",
+	"../ajax",
+	"../event"
+], function( jQuery ) {
+
+"use strict";
+
+jQuery.each( [
+	"ajaxStart",
+	"ajaxStop",
+	"ajaxComplete",
+	"ajaxError",
+	"ajaxSuccess",
+	"ajaxSend"
+], function( _i, type ) {
+	jQuery.fn[ type ] = function( fn ) {
+		return this.on( type, fn );
+	};
+} );
+
+} );

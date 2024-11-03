@@ -1,1 +1,488 @@
-import inherits from"inherits-browser";import{assign}from"min-dash";import BaseLayouter from"diagram-js/lib/layout/BaseLayouter";import{repairConnection,withoutRedundantPoints}from"diagram-js/lib/layout/ManhattanLayout";import{getMid,getOrientation}from"diagram-js/lib/layout/LayoutUtil";import{isExpanded}from"../../util/DiUtil";import{is}from"../../util/ModelUtil";import{isDirectionHorizontal}from"./util/ModelingUtil";var ATTACH_ORIENTATION_PADDING=-10,BOUNDARY_TO_HOST_THRESHOLD=40,PREFERRED_LAYOUTS_HORIZONTAL={default:["h:h"],fromGateway:["v:h"],toGateway:["h:v"],loop:{fromTop:["t:r"],fromRight:["r:b"],fromLeft:["l:t"],fromBottom:["b:l"]},boundaryLoop:{alternateHorizontalSide:"b",alternateVerticalSide:"l",default:"v"},messageFlow:["straight","v:v"],subProcess:["straight","h:h"],isHorizontal:!0},PREFERRED_LAYOUTS_VERTICAL={default:["v:v"],fromGateway:["h:v"],toGateway:["v:h"],loop:{fromTop:["t:l"],fromRight:["r:t"],fromLeft:["l:b"],fromBottom:["b:r"]},boundaryLoop:{alternateHorizontalSide:"t",alternateVerticalSide:"r",default:"h"},messageFlow:["straight","h:h"],subProcess:["straight","v:v"],isHorizontal:!1},oppositeOrientationMapping={top:"bottom","top-right":"bottom-left","top-left":"bottom-right",right:"left",bottom:"top","bottom-right":"top-left","bottom-left":"top-right",left:"right"},orientationDirectionMapping={top:"t",right:"r",bottom:"b",left:"l"};export default function BpmnLayouter(t){this._elementRegistry=t}function getAttachOrientation(t){var e=t.host;return getOrientation(getMid(t),e,ATTACH_ORIENTATION_PADDING)}function getMessageFlowManhattanOptions(t,e,o){return{preferredLayouts:o.messageFlow,preserveDocking:getMessageFlowPreserveDocking(t,e)}}function getMessageFlowPreserveDocking(t,e){return is(e,"bpmn:Participant")?"source":is(t,"bpmn:Participant")?"target":isExpandedSubProcess(e)?"source":isExpandedSubProcess(t)||is(e,"bpmn:Event")?"target":is(t,"bpmn:Event")?"source":null}function getSubProcessPreserveDocking(t){return isExpandedSubProcess(t)?"target":"source"}function getConnectionDocking(t,e){return t?t.original||t:getMid(e)}function isCompensationAssociation(t,e){return is(e,"bpmn:Activity")&&is(t,"bpmn:BoundaryEvent")&&e.businessObject.isForCompensation}function isExpandedSubProcess(t){return is(t,"bpmn:SubProcess")&&isExpanded(t)}function isSame(t,e){return t===e}function isAnyOrientation(t,e){return-1!==e.indexOf(t)}function getHorizontalOrientation(t){var e=/right|left/.exec(t);return e&&e[0]}function getVerticalOrientation(t){var e=/top|bottom/.exec(t);return e&&e[0]}function isOppositeOrientation(t,e){return oppositeOrientationMapping[t]===e}function isOppositeHorizontalOrientation(t,e){var o=getHorizontalOrientation(t),i=oppositeOrientationMapping[o];return-1!==e.indexOf(i)}function isOppositeVerticalOrientation(t,e){var o=getVerticalOrientation(t),i=oppositeOrientationMapping[o];return-1!==e.indexOf(i)}function isHorizontalOrientation(t){return"right"===t||"left"===t}function getLoopPreferredLayout(t,e,o){var i=e.waypoints,n=i&&i.length&&getOrientation(i[0],t);return"top"===n?o.loop.fromTop:"right"===n?o.loop.fromRight:"left"===n?o.loop.fromLeft:o.loop.fromBottom}function getBoundaryEventPreferredLayouts(t,e,o,i){var n=getMid(t),r=getMid(e),a=getAttachOrientation(t),s=isSame(t.host,e),u=isAnyOrientation(a,["top","right","bottom","left"]),p=getOrientation(r,n,{x:t.width/2+e.width/2,y:t.height/2+e.height/2});return s?getBoundaryEventLoopLayout(a,u,t,e,o,i):[getBoundaryEventSourceLayout(a,p,u,i.isHorizontal)+":"+getBoundaryEventTargetLayout(a,p,u,i.isHorizontal)]}function getBoundaryEventLoopLayout(t,e,o,i,n,r){var a=e?t:r.isHorizontal?getVerticalOrientation(t):getHorizontalOrientation(t);return[orientationDirectionMapping[a]+":"+(e?isHorizontalOrientation(t)?shouldConnectToSameSide("y",o,i,n)?"h":r.boundaryLoop.alternateHorizontalSide:shouldConnectToSameSide("x",o,i,n)?"v":r.boundaryLoop.alternateVerticalSide:r.boundaryLoop.default)]}function shouldConnectToSameSide(t,e,o,i){var n=BOUNDARY_TO_HOST_THRESHOLD;return!(areCloseOnAxis(t,i,o,n)||areCloseOnAxis(t,i,{x:o.x+o.width,y:o.y+o.height},n)||areCloseOnAxis(t,i,getMid(e),n))}function areCloseOnAxis(t,e,o,i){return Math.abs(e[t]-o[t])<i}function getBoundaryEventSourceLayout(t,e,o,i){if(o)return orientationDirectionMapping[t];var n=getVerticalOrientation(t),r=getHorizontalOrientation(t),a=getVerticalOrientation(e),s=getHorizontalOrientation(e);if(i){if(isSame(n,a)||isOppositeOrientation(r,s))return orientationDirectionMapping[n]}else if(isSame(r,s)||isOppositeOrientation(n,a))return orientationDirectionMapping[r];return orientationDirectionMapping[i?r:n]}function getBoundaryEventTargetLayout(t,e,o,i){return o?isHorizontalOrientation(t)?isOppositeHorizontalOrientation(t,e)||isSame(t,e)?"h":"v":isOppositeVerticalOrientation(t,e)||isSame(t,e)?"v":"h":i?isSame(getVerticalOrientation(t),getVerticalOrientation(e))?"h":"v":isSame(getHorizontalOrientation(t),getHorizontalOrientation(e))?"v":"h"}inherits(BpmnLayouter,BaseLayouter),BpmnLayouter.prototype.layoutConnection=function(t,e){e||(e={});var o,i,n=e.source||t.source,r=e.target||t.target,a=e.waypoints||t.waypoints,s=e.connectionStart,u=e.connectionEnd,p=this._elementRegistry;if(s||(s=getConnectionDocking(a&&a[0],n)),u||(u=getConnectionDocking(a&&a[a.length-1],r)),(is(t,"bpmn:Association")||is(t,"bpmn:DataAssociation"))&&a&&!isCompensationAssociation(n,r))return[].concat([s],a.slice(1,-1),[u]);var g=isDirectionHorizontal(n,p)?PREFERRED_LAYOUTS_HORIZONTAL:PREFERRED_LAYOUTS_VERTICAL;return is(t,"bpmn:MessageFlow")?o=getMessageFlowManhattanOptions(n,r,g):(is(t,"bpmn:SequenceFlow")||isCompensationAssociation(n,r))&&(o=n===r?{preferredLayouts:getLoopPreferredLayout(n,t,g)}:is(n,"bpmn:BoundaryEvent")?{preferredLayouts:getBoundaryEventPreferredLayouts(n,r,u,g)}:isExpandedSubProcess(n)||isExpandedSubProcess(r)?{preferredLayouts:g.subProcess,preserveDocking:getSubProcessPreserveDocking(n)}:is(n,"bpmn:Gateway")?{preferredLayouts:g.fromGateway}:is(r,"bpmn:Gateway")?{preferredLayouts:g.toGateway}:{preferredLayouts:g.default}),o&&(o=assign(o,e),i=withoutRedundantPoints(repairConnection(n,r,s,u,a,o))),i||[s,u]},BpmnLayouter.$inject=["elementRegistry"];
+import inherits from 'inherits-browser';
+
+import {
+  assign
+} from 'min-dash';
+
+import BaseLayouter from 'diagram-js/lib/layout/BaseLayouter';
+
+import {
+  repairConnection,
+  withoutRedundantPoints
+} from 'diagram-js/lib/layout/ManhattanLayout';
+
+import {
+  getMid,
+  getOrientation
+} from 'diagram-js/lib/layout/LayoutUtil';
+
+import {
+  isExpanded
+} from '../../util/DiUtil';
+
+import { is } from '../../util/ModelUtil';
+
+import { isDirectionHorizontal } from './util/ModelingUtil';
+
+/**
+ * @typedef {import('diagram-js/lib/core/ElementRegistry').default} ElementRegistry
+ *
+ * @typedef {import('diagram-js/lib/util/Types').Point} Point
+ *
+ * @typedef {import('../../model/Types').Connection} Connection
+ * @typedef {import('../../model/Types').Element} Element
+ *
+ * @typedef {import('diagram-js/lib/layout/BaseLayouter').LayoutConnectionHints} LayoutConnectionHints
+ *
+ * @typedef { {
+ *   source?: Element;
+ *   target?: Element;
+ *   waypoints?: Point[];
+ *   connectionStart?: Point;
+ *   connectionEnd?: Point;
+ * } & LayoutConnectionHints } BpmnLayoutConnectionHints
+ */
+
+var ATTACH_ORIENTATION_PADDING = -10,
+    BOUNDARY_TO_HOST_THRESHOLD = 40;
+
+// layout all connection between flow elements h:h, except for
+// (1) outgoing of boundary events -> layout based on attach orientation and target orientation
+// (2) incoming/outgoing of gateways -> v:h for outgoing, h:v for incoming
+// (3) loops connect sides clockwise
+var PREFERRED_LAYOUTS_HORIZONTAL = {
+  default: [ 'h:h' ],
+  fromGateway: [ 'v:h' ],
+  toGateway: [ 'h:v' ],
+  loop: {
+    fromTop: [ 't:r' ],
+    fromRight: [ 'r:b' ],
+    fromLeft: [ 'l:t' ],
+    fromBottom: [ 'b:l' ]
+  },
+  boundaryLoop: {
+    alternateHorizontalSide: 'b',
+    alternateVerticalSide: 'l',
+    default: 'v'
+  },
+  messageFlow: [ 'straight', 'v:v' ],
+  subProcess: [ 'straight', 'h:h' ],
+  isHorizontal: true
+};
+
+// for vertical layouts, switch h and v and loop counter-clockwise
+var PREFERRED_LAYOUTS_VERTICAL = {
+  default: [ 'v:v' ],
+  fromGateway: [ 'h:v' ],
+  toGateway: [ 'v:h' ],
+  loop: {
+    fromTop: [ 't:l' ],
+    fromRight: [ 'r:t' ],
+    fromLeft: [ 'l:b' ],
+    fromBottom: [ 'b:r' ]
+  },
+  boundaryLoop: {
+    alternateHorizontalSide: 't',
+    alternateVerticalSide: 'r',
+    default: 'h'
+  },
+  messageFlow: [ 'straight', 'h:h' ],
+  subProcess: [ 'straight', 'v:v' ],
+  isHorizontal: false
+};
+
+var oppositeOrientationMapping = {
+  'top': 'bottom',
+  'top-right': 'bottom-left',
+  'top-left': 'bottom-right',
+  'right': 'left',
+  'bottom': 'top',
+  'bottom-right': 'top-left',
+  'bottom-left': 'top-right',
+  'left': 'right'
+};
+
+var orientationDirectionMapping = {
+  top: 't',
+  right: 'r',
+  bottom: 'b',
+  left: 'l'
+};
+
+export default function BpmnLayouter(elementRegistry) {
+  this._elementRegistry = elementRegistry;
+}
+
+inherits(BpmnLayouter, BaseLayouter);
+
+/**
+ * Returns waypoints of laid out connection.
+ *
+ * @param {Connection} connection
+ * @param {BpmnLayoutConnectionHints} [hints]
+ *
+ * @return {Point[]}
+ */
+BpmnLayouter.prototype.layoutConnection = function(connection, hints) {
+  if (!hints) {
+    hints = {};
+  }
+
+  var source = hints.source || connection.source,
+      target = hints.target || connection.target,
+      waypoints = hints.waypoints || connection.waypoints,
+      connectionStart = hints.connectionStart,
+      connectionEnd = hints.connectionEnd,
+      elementRegistry = this._elementRegistry;
+
+  var manhattanOptions,
+      updatedWaypoints;
+
+  if (!connectionStart) {
+    connectionStart = getConnectionDocking(waypoints && waypoints[ 0 ], source);
+  }
+
+  if (!connectionEnd) {
+    connectionEnd = getConnectionDocking(waypoints && waypoints[ waypoints.length - 1 ], target);
+  }
+
+  if (is(connection, 'bpmn:Association') ||
+      is(connection, 'bpmn:DataAssociation')) {
+
+    if (waypoints && !isCompensationAssociation(source, target)) {
+      return [].concat([ connectionStart ], waypoints.slice(1, -1), [ connectionEnd ]);
+    }
+  }
+
+  var layout = isDirectionHorizontal(source, elementRegistry) ? PREFERRED_LAYOUTS_HORIZONTAL : PREFERRED_LAYOUTS_VERTICAL;
+
+  if (is(connection, 'bpmn:MessageFlow')) {
+    manhattanOptions = getMessageFlowManhattanOptions(source, target, layout);
+  } else if (is(connection, 'bpmn:SequenceFlow') || isCompensationAssociation(source, target)) {
+
+    if (source === target) {
+      manhattanOptions = {
+        preferredLayouts: getLoopPreferredLayout(source, connection, layout)
+      };
+    } else if (is(source, 'bpmn:BoundaryEvent')) {
+      manhattanOptions = {
+        preferredLayouts: getBoundaryEventPreferredLayouts(source, target, connectionEnd, layout)
+      };
+    } else if (isExpandedSubProcess(source) || isExpandedSubProcess(target)) {
+      manhattanOptions = {
+        preferredLayouts: layout.subProcess,
+        preserveDocking: getSubProcessPreserveDocking(source)
+      };
+    } else if (is(source, 'bpmn:Gateway')) {
+      manhattanOptions = {
+        preferredLayouts: layout.fromGateway
+      };
+    } else if (is(target, 'bpmn:Gateway')) {
+      manhattanOptions = {
+        preferredLayouts: layout.toGateway
+      };
+    } else {
+      manhattanOptions = {
+        preferredLayouts: layout.default
+      };
+    }
+  }
+
+  if (manhattanOptions) {
+    manhattanOptions = assign(manhattanOptions, hints);
+
+    updatedWaypoints = withoutRedundantPoints(repairConnection(
+      source,
+      target,
+      connectionStart,
+      connectionEnd,
+      waypoints,
+      manhattanOptions
+    ));
+  }
+
+  return updatedWaypoints || [ connectionStart, connectionEnd ];
+};
+
+
+// helpers //////////
+
+function getAttachOrientation(attachedElement) {
+  var hostElement = attachedElement.host;
+
+  return getOrientation(getMid(attachedElement), hostElement, ATTACH_ORIENTATION_PADDING);
+}
+
+function getMessageFlowManhattanOptions(source, target, layout) {
+  return {
+    preferredLayouts: layout.messageFlow,
+    preserveDocking: getMessageFlowPreserveDocking(source, target)
+  };
+}
+
+function getMessageFlowPreserveDocking(source, target) {
+
+  // (1) docking element connected to participant has precedence
+  if (is(target, 'bpmn:Participant')) {
+    return 'source';
+  }
+
+  if (is(source, 'bpmn:Participant')) {
+    return 'target';
+  }
+
+  // (2) docking element connected to expanded sub-process has precedence
+  if (isExpandedSubProcess(target)) {
+    return 'source';
+  }
+
+  if (isExpandedSubProcess(source)) {
+    return 'target';
+  }
+
+  // (3) docking event has precedence
+  if (is(target, 'bpmn:Event')) {
+    return 'target';
+  }
+
+  if (is(source, 'bpmn:Event')) {
+    return 'source';
+  }
+
+  return null;
+}
+
+function getSubProcessPreserveDocking(source) {
+  return isExpandedSubProcess(source) ? 'target' : 'source';
+}
+
+function getConnectionDocking(point, shape) {
+  return point ? (point.original || point) : getMid(shape);
+}
+
+function isCompensationAssociation(source, target) {
+  return is(target, 'bpmn:Activity') &&
+    is(source, 'bpmn:BoundaryEvent') &&
+    target.businessObject.isForCompensation;
+}
+
+function isExpandedSubProcess(element) {
+  return is(element, 'bpmn:SubProcess') && isExpanded(element);
+}
+
+function isSame(a, b) {
+  return a === b;
+}
+
+function isAnyOrientation(orientation, orientations) {
+  return orientations.indexOf(orientation) !== -1;
+}
+
+function getHorizontalOrientation(orientation) {
+  var matches = /right|left/.exec(orientation);
+
+  return matches && matches[0];
+}
+
+function getVerticalOrientation(orientation) {
+  var matches = /top|bottom/.exec(orientation);
+
+  return matches && matches[0];
+}
+
+function isOppositeOrientation(a, b) {
+  return oppositeOrientationMapping[a] === b;
+}
+
+function isOppositeHorizontalOrientation(a, b) {
+  var horizontalOrientation = getHorizontalOrientation(a);
+
+  var oppositeHorizontalOrientation = oppositeOrientationMapping[horizontalOrientation];
+
+  return b.indexOf(oppositeHorizontalOrientation) !== -1;
+}
+
+function isOppositeVerticalOrientation(a, b) {
+  var verticalOrientation = getVerticalOrientation(a);
+
+  var oppositeVerticalOrientation = oppositeOrientationMapping[verticalOrientation];
+
+  return b.indexOf(oppositeVerticalOrientation) !== -1;
+}
+
+function isHorizontalOrientation(orientation) {
+  return orientation === 'right' || orientation === 'left';
+}
+
+function getLoopPreferredLayout(source, connection, layout) {
+  var waypoints = connection.waypoints;
+
+  var orientation = waypoints && waypoints.length && getOrientation(waypoints[0], source);
+
+  if (orientation === 'top') {
+    return layout.loop.fromTop;
+  } else if (orientation === 'right') {
+    return layout.loop.fromRight;
+  } else if (orientation === 'left') {
+    return layout.loop.fromLeft;
+  }
+
+  return layout.loop.fromBottom;
+}
+
+function getBoundaryEventPreferredLayouts(source, target, end, layout) {
+  var sourceMid = getMid(source),
+      targetMid = getMid(target),
+      attachOrientation = getAttachOrientation(source),
+      sourceLayout,
+      targetLayout;
+
+  var isLoop = isSame(source.host, target);
+
+  var attachedToSide = isAnyOrientation(attachOrientation, [ 'top', 'right', 'bottom', 'left' ]);
+
+  var targetOrientation = getOrientation(targetMid, sourceMid, {
+    x: source.width / 2 + target.width / 2,
+    y: source.height / 2 + target.height / 2
+  });
+
+  if (isLoop) {
+    return getBoundaryEventLoopLayout(attachOrientation, attachedToSide, source, target, end, layout);
+  }
+
+  // source layout
+  sourceLayout = getBoundaryEventSourceLayout(attachOrientation, targetOrientation, attachedToSide, layout.isHorizontal);
+
+  // target layout
+  targetLayout = getBoundaryEventTargetLayout(attachOrientation, targetOrientation, attachedToSide, layout.isHorizontal);
+
+  return [ sourceLayout + ':' + targetLayout ];
+}
+
+function getBoundaryEventLoopLayout(attachOrientation, attachedToSide, source, target, end, layout) {
+  var orientation = attachedToSide ? attachOrientation : layout.isHorizontal ? getVerticalOrientation(attachOrientation) : getHorizontalOrientation(attachOrientation),
+      sourceLayout = orientationDirectionMapping[ orientation ],
+      targetLayout;
+
+  if (attachedToSide) {
+    if (isHorizontalOrientation(attachOrientation)) {
+      targetLayout = shouldConnectToSameSide('y', source, target, end) ? 'h' : layout.boundaryLoop.alternateHorizontalSide;
+    } else {
+      targetLayout = shouldConnectToSameSide('x', source, target, end) ? 'v' : layout.boundaryLoop.alternateVerticalSide;
+    }
+  } else {
+    targetLayout = layout.boundaryLoop.default;
+  }
+
+  return [ sourceLayout + ':' + targetLayout ];
+}
+
+function shouldConnectToSameSide(axis, source, target, end) {
+  var threshold = BOUNDARY_TO_HOST_THRESHOLD;
+
+  return !(
+    areCloseOnAxis(axis, end, target, threshold) ||
+    areCloseOnAxis(axis, end, {
+      x: target.x + target.width,
+      y: target.y + target.height
+    }, threshold) ||
+    areCloseOnAxis(axis, end, getMid(source), threshold)
+  );
+}
+
+function areCloseOnAxis(axis, a, b, threshold) {
+  return Math.abs(a[ axis ] - b[ axis ]) < threshold;
+}
+
+function getBoundaryEventSourceLayout(attachOrientation, targetOrientation, attachedToSide, isHorizontal) {
+
+  // attached to either top, right, bottom or left side
+  if (attachedToSide) {
+    return orientationDirectionMapping[ attachOrientation ];
+  }
+
+  // attached to either top-right, top-left, bottom-right or bottom-left corner
+
+  var verticalAttachOrientation = getVerticalOrientation(attachOrientation),
+      horizontalAttachOrientation = getHorizontalOrientation(attachOrientation),
+      verticalTargetOrientation = getVerticalOrientation(targetOrientation),
+      horizontalTargetOrientation = getHorizontalOrientation(targetOrientation);
+
+  if (isHorizontal) {
+
+    // same vertical or opposite horizontal orientation
+    if (
+      isSame(verticalAttachOrientation, verticalTargetOrientation) ||
+      isOppositeOrientation(horizontalAttachOrientation, horizontalTargetOrientation)
+    ) {
+      return orientationDirectionMapping[ verticalAttachOrientation ];
+    }
+  } else {
+
+    // same horizontal or opposite vertical orientation
+    if (
+      isSame(horizontalAttachOrientation, horizontalTargetOrientation) ||
+      isOppositeOrientation(verticalAttachOrientation, verticalTargetOrientation)
+    ) {
+      return orientationDirectionMapping[ horizontalAttachOrientation ];
+    }
+  }
+
+  // fallback
+  return orientationDirectionMapping[ isHorizontal ? horizontalAttachOrientation : verticalAttachOrientation ];
+}
+
+function getBoundaryEventTargetLayout(attachOrientation, targetOrientation, attachedToSide, isHorizontal) {
+
+  // attached to either top, right, bottom or left side
+  if (attachedToSide) {
+    if (isHorizontalOrientation(attachOrientation)) {
+
+      // orientation is right or left
+
+      // opposite horizontal orientation or same orientation
+      if (
+        isOppositeHorizontalOrientation(attachOrientation, targetOrientation) ||
+        isSame(attachOrientation, targetOrientation)
+      ) {
+        return 'h';
+      }
+
+      // fallback
+      return 'v';
+    } else {
+
+      // orientation is top or bottom
+
+      // opposite vertical orientation or same orientation
+      if (
+        isOppositeVerticalOrientation(attachOrientation, targetOrientation) ||
+        isSame(attachOrientation, targetOrientation)
+      ) {
+        return 'v';
+      }
+
+      // fallback
+      return 'h';
+    }
+  }
+
+  // attached to either top-right, top-left, bottom-right or bottom-left corner
+  // and orientation is same on the counter-axis
+
+  if (isHorizontal) {
+    if (isSame(getVerticalOrientation(attachOrientation), getVerticalOrientation(targetOrientation))) {
+      return 'h';
+    } else {
+      return 'v';
+    }
+  } else {
+    if (isSame(getHorizontalOrientation(attachOrientation), getHorizontalOrientation(targetOrientation))) {
+      return 'v';
+    } else {
+      return 'h';
+    }
+  }
+}
+
+BpmnLayouter.$inject = [ 'elementRegistry' ];

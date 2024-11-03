@@ -1,1 +1,7 @@
-define(["./fnToString"],(function(n){"use strict";return n.call(Object)}));
+define( [
+	"./fnToString"
+], function( fnToString ) {
+	"use strict";
+
+	return fnToString.call( Object );
+} );

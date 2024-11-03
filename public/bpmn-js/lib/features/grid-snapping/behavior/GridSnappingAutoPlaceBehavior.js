@@ -1,1 +1,77 @@
-import{getNewShapePosition}from"../../auto-place/BpmnAutoPlaceUtil";import{getMid}from"diagram-js/lib/layout/LayoutUtil";import{is}from"../../../util/ModelUtil";var HIGH_PRIORITY=2e3;export default function GridSnappingAutoPlaceBehavior(t,i,o){t.on("autoPlace",HIGH_PRIORITY,(function(t){var e=t.source,n=getMid(e),a=t.shape,r=getNewShapePosition(e,a,o);return["x","y"].forEach((function(t){var o={};r[t]!==n[t]&&(r[t]>n[t]?o.min=r[t]:o.max=r[t],is(a,"bpmn:TextAnnotation")&&(isHorizontal(t)?o.offset=-a.width/2:o.offset=-a.height/2),r[t]=i.snapValue(r[t],o))})),r}))}function isHorizontal(t){return"x"===t}GridSnappingAutoPlaceBehavior.$inject=["eventBus","gridSnapping","elementRegistry"];
+import { getNewShapePosition } from '../../auto-place/BpmnAutoPlaceUtil';
+
+import { getMid } from 'diagram-js/lib/layout/LayoutUtil';
+import { is } from '../../../util/ModelUtil';
+
+/**
+ * @typedef {import('diagram-js/lib/core/EventBus').default} EventBus
+ * @typedef {import('diagram-js/lib/core/ElementRegistry').default} ElementRegistry
+ * @typedef {import('diagram-js/lib/features/grid-snapping/GridSnapping').default} GridSnapping
+ *
+ * @typedef {import('diagram-js/lib/util/Types').Axis} Axis
+ */
+
+var HIGH_PRIORITY = 2000;
+
+/**
+ * @param {EventBus} eventBus
+ * @param {GridSnapping} gridSnapping
+ * @param {ElementRegistry} elementRegistry
+ */
+export default function GridSnappingAutoPlaceBehavior(eventBus, gridSnapping, elementRegistry) {
+  eventBus.on('autoPlace', HIGH_PRIORITY, function(context) {
+    var source = context.source,
+        sourceMid = getMid(source),
+        shape = context.shape;
+
+    var position = getNewShapePosition(source, shape, elementRegistry);
+
+    [ 'x', 'y' ].forEach(function(axis) {
+      var options = {};
+
+      // do not snap if x/y equal
+      if (position[ axis ] === sourceMid[ axis ]) {
+        return;
+      }
+
+      if (position[ axis ] > sourceMid[ axis ]) {
+        options.min = position[ axis ];
+      } else {
+        options.max = position[ axis ];
+      }
+
+      if (is(shape, 'bpmn:TextAnnotation')) {
+
+        if (isHorizontal(axis)) {
+          options.offset = -shape.width / 2;
+        } else {
+          options.offset = -shape.height / 2;
+        }
+
+      }
+
+      position[ axis ] = gridSnapping.snapValue(position[ axis ], options);
+
+    });
+
+    // must be returned to be considered by auto place
+    return position;
+  });
+}
+
+GridSnappingAutoPlaceBehavior.$inject = [
+  'eventBus',
+  'gridSnapping',
+  'elementRegistry'
+];
+
+// helpers //////////
+
+/**
+ * @param {Axis} axis
+ *
+ * @return {boolean}
+ */
+function isHorizontal(axis) {
+  return axis === 'x';
+}

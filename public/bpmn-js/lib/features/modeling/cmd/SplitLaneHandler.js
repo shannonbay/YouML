@@ -1,1 +1,99 @@
-import{getChildLanes,LANE_INDENTATION}from"../util/LaneUtil";import{isHorizontal}from"../../../util/DiUtil";export default function SplitLaneHandler(t){this._modeling=t}SplitLaneHandler.$inject=["modeling"],SplitLaneHandler.prototype.preExecute=function(t){var e=this._modeling,i=t.shape,n=t.count,h=getChildLanes(i),o=h.length;if(o>n)throw new Error(`more than <${n}> child lanes`);var r,a,l,N,d=isHorizontal(i),p=d?i.height:i.width,E=Math.round(p/n);for(N=0;N<n;N++)r=N===n-1?p-E*N:E,a=d?{x:i.x+LANE_INDENTATION,y:i.y+N*E,width:i.width-LANE_INDENTATION,height:r}:{x:i.x+N*E,y:i.y+LANE_INDENTATION,width:r,height:i.height-LANE_INDENTATION},N<o?e.resizeShape(h[N],a):(l={type:"bpmn:Lane",isHorizontal:d},e.createShape(l,a,i))};
+import {
+  getChildLanes,
+  LANE_INDENTATION
+} from '../util/LaneUtil';
+
+import {
+  isHorizontal
+} from '../../../util/DiUtil';
+
+/**
+ * @typedef {import('diagram-js/lib/command/CommandHandler').default} CommandHandler
+ *
+ * @typedef {import('../Modeling').default} Modeling
+ */
+
+/**
+ * A handler that splits a lane into a number of sub-lanes,
+ * creating new sub lanes, if necessary.
+ *
+ * @implements {CommandHandler}
+ *
+ * @param {Modeling} modeling
+ */
+export default function SplitLaneHandler(modeling) {
+  this._modeling = modeling;
+}
+
+SplitLaneHandler.$inject = [
+  'modeling'
+];
+
+
+SplitLaneHandler.prototype.preExecute = function(context) {
+
+  var modeling = this._modeling;
+
+  var shape = context.shape,
+      newLanesCount = context.count;
+
+  var childLanes = getChildLanes(shape),
+      existingLanesCount = childLanes.length;
+
+  if (existingLanesCount > newLanesCount) {
+    throw new Error(`more than <${ newLanesCount }> child lanes`);
+  }
+
+  var isHorizontalLane = isHorizontal(shape);
+
+  var laneBaseSize = isHorizontalLane ? shape.height : shape.width;
+  var newLanesSize = Math.round(laneBaseSize / newLanesCount);
+
+  // Iterate from first to last in child lane order,
+  // resizing existing lanes and creating new ones
+  // so that they split the parent proportionally.
+  //
+  // Due to rounding related errors, the last lane
+  // needs to take up all the remaining space.
+  var laneSize,
+      laneBounds,
+      newLaneAttrs,
+      idx;
+
+  for (idx = 0; idx < newLanesCount; idx++) {
+
+    // if last lane
+    if (idx === newLanesCount - 1) {
+      laneSize = laneBaseSize - (newLanesSize * idx);
+    } else {
+      laneSize = newLanesSize;
+    }
+
+    laneBounds = isHorizontalLane ? {
+      x: shape.x + LANE_INDENTATION,
+      y: shape.y + idx * newLanesSize,
+      width: shape.width - LANE_INDENTATION,
+      height: laneSize
+    } : {
+      x: shape.x + idx * newLanesSize,
+      y: shape.y + LANE_INDENTATION,
+      width: laneSize,
+      height: shape.height - LANE_INDENTATION
+    };
+
+    if (idx < existingLanesCount) {
+
+      // resize existing lane
+      modeling.resizeShape(childLanes[idx], laneBounds);
+    } else {
+
+      // create a new lane at position
+      newLaneAttrs = {
+        type: 'bpmn:Lane',
+        isHorizontal: isHorizontalLane
+      };
+
+      modeling.createShape(newLaneAttrs, laneBounds, shape);
+    }
+  }
+};

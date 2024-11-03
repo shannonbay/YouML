@@ -1,1 +1,78 @@
-define(["./core","./var/isFunction","./core/init","./manipulation","./traversing"],(function(t,n){"use strict";return t.fn.extend({wrapAll:function(i){var e;return this[0]&&(n(i)&&(i=i.call(this[0])),e=t(i,this[0].ownerDocument).eq(0).clone(!0),this[0].parentNode&&e.insertBefore(this[0]),e.map((function(){for(var t=this;t.firstElementChild;)t=t.firstElementChild;return t})).append(this)),this},wrapInner:function(i){return n(i)?this.each((function(n){t(this).wrapInner(i.call(this,n))})):this.each((function(){var n=t(this),e=n.contents();e.length?e.wrapAll(i):n.append(i)}))},wrap:function(i){var e=n(i);return this.each((function(n){t(this).wrapAll(e?i.call(this,n):i)}))},unwrap:function(n){return this.parent(n).not("body").each((function(){t(this).replaceWith(this.childNodes)})),this}}),t}));
+define( [
+	"./core",
+	"./var/isFunction",
+	"./core/init",
+	"./manipulation", // clone
+	"./traversing" // parent, contents
+], function( jQuery, isFunction ) {
+
+"use strict";
+
+jQuery.fn.extend( {
+	wrapAll: function( html ) {
+		var wrap;
+
+		if ( this[ 0 ] ) {
+			if ( isFunction( html ) ) {
+				html = html.call( this[ 0 ] );
+			}
+
+			// The elements to wrap the target around
+			wrap = jQuery( html, this[ 0 ].ownerDocument ).eq( 0 ).clone( true );
+
+			if ( this[ 0 ].parentNode ) {
+				wrap.insertBefore( this[ 0 ] );
+			}
+
+			wrap.map( function() {
+				var elem = this;
+
+				while ( elem.firstElementChild ) {
+					elem = elem.firstElementChild;
+				}
+
+				return elem;
+			} ).append( this );
+		}
+
+		return this;
+	},
+
+	wrapInner: function( html ) {
+		if ( isFunction( html ) ) {
+			return this.each( function( i ) {
+				jQuery( this ).wrapInner( html.call( this, i ) );
+			} );
+		}
+
+		return this.each( function() {
+			var self = jQuery( this ),
+				contents = self.contents();
+
+			if ( contents.length ) {
+				contents.wrapAll( html );
+
+			} else {
+				self.append( html );
+			}
+		} );
+	},
+
+	wrap: function( html ) {
+		var htmlIsFunction = isFunction( html );
+
+		return this.each( function( i ) {
+			jQuery( this ).wrapAll( htmlIsFunction ? html.call( this, i ) : html );
+		} );
+	},
+
+	unwrap: function( selector ) {
+		this.parent( selector ).not( "body" ).each( function() {
+			jQuery( this ).replaceWith( this.childNodes );
+		} );
+		return this;
+	}
+} );
+
+return jQuery;
+} );

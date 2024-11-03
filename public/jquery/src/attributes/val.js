@@ -1,1 +1,191 @@
-define(["../core","../core/stripAndCollapse","./support","../core/nodeName","../var/isFunction","../core/init"],(function(e,t,n,o,r){"use strict";var a=/\r/g;e.fn.extend({val:function(t){var n,o,i,l=this[0];return arguments.length?(i=r(t),this.each((function(o){var r;1===this.nodeType&&(null==(r=i?t.call(this,o,e(this).val()):t)?r="":"number"==typeof r?r+="":Array.isArray(r)&&(r=e.map(r,(function(e){return null==e?"":e+""}))),(n=e.valHooks[this.type]||e.valHooks[this.nodeName.toLowerCase()])&&"set"in n&&void 0!==n.set(this,r,"value")||(this.value=r))}))):l?(n=e.valHooks[l.type]||e.valHooks[l.nodeName.toLowerCase()])&&"get"in n&&void 0!==(o=n.get(l,"value"))?o:"string"==typeof(o=l.value)?o.replace(a,""):null==o?"":o:void 0}}),e.extend({valHooks:{option:{get:function(n){var o=e.find.attr(n,"value");return null!=o?o:t(e.text(n))}},select:{get:function(t){var n,r,a,i=t.options,l=t.selectedIndex,s="select-one"===t.type,u=s?null:[],c=s?l+1:i.length;for(a=l<0?c:s?l:0;a<c;a++)if(((r=i[a]).selected||a===l)&&!r.disabled&&(!r.parentNode.disabled||!o(r.parentNode,"optgroup"))){if(n=e(r).val(),s)return n;u.push(n)}return u},set:function(t,n){for(var o,r,a=t.options,i=e.makeArray(n),l=a.length;l--;)((r=a[l]).selected=e.inArray(e.valHooks.option.get(r),i)>-1)&&(o=!0);return o||(t.selectedIndex=-1),i}}}}),e.each(["radio","checkbox"],(function(){e.valHooks[this]={set:function(t,n){if(Array.isArray(n))return t.checked=e.inArray(e(t).val(),n)>-1}},n.checkOn||(e.valHooks[this].get=function(e){return null===e.getAttribute("value")?"on":e.value})}))}));
+define( [
+	"../core",
+	"../core/stripAndCollapse",
+	"./support",
+	"../core/nodeName",
+	"../var/isFunction",
+
+	"../core/init"
+], function( jQuery, stripAndCollapse, support, nodeName, isFunction ) {
+
+"use strict";
+
+var rreturn = /\r/g;
+
+jQuery.fn.extend( {
+	val: function( value ) {
+		var hooks, ret, valueIsFunction,
+			elem = this[ 0 ];
+
+		if ( !arguments.length ) {
+			if ( elem ) {
+				hooks = jQuery.valHooks[ elem.type ] ||
+					jQuery.valHooks[ elem.nodeName.toLowerCase() ];
+
+				if ( hooks &&
+					"get" in hooks &&
+					( ret = hooks.get( elem, "value" ) ) !== undefined
+				) {
+					return ret;
+				}
+
+				ret = elem.value;
+
+				// Handle most common string cases
+				if ( typeof ret === "string" ) {
+					return ret.replace( rreturn, "" );
+				}
+
+				// Handle cases where value is null/undef or number
+				return ret == null ? "" : ret;
+			}
+
+			return;
+		}
+
+		valueIsFunction = isFunction( value );
+
+		return this.each( function( i ) {
+			var val;
+
+			if ( this.nodeType !== 1 ) {
+				return;
+			}
+
+			if ( valueIsFunction ) {
+				val = value.call( this, i, jQuery( this ).val() );
+			} else {
+				val = value;
+			}
+
+			// Treat null/undefined as ""; convert numbers to string
+			if ( val == null ) {
+				val = "";
+
+			} else if ( typeof val === "number" ) {
+				val += "";
+
+			} else if ( Array.isArray( val ) ) {
+				val = jQuery.map( val, function( value ) {
+					return value == null ? "" : value + "";
+				} );
+			}
+
+			hooks = jQuery.valHooks[ this.type ] || jQuery.valHooks[ this.nodeName.toLowerCase() ];
+
+			// If set returns undefined, fall back to normal setting
+			if ( !hooks || !( "set" in hooks ) || hooks.set( this, val, "value" ) === undefined ) {
+				this.value = val;
+			}
+		} );
+	}
+} );
+
+jQuery.extend( {
+	valHooks: {
+		option: {
+			get: function( elem ) {
+
+				var val = jQuery.find.attr( elem, "value" );
+				return val != null ?
+					val :
+
+					// Support: IE <=10 - 11 only
+					// option.text throws exceptions (trac-14686, trac-14858)
+					// Strip and collapse whitespace
+					// https://html.spec.whatwg.org/#strip-and-collapse-whitespace
+					stripAndCollapse( jQuery.text( elem ) );
+			}
+		},
+		select: {
+			get: function( elem ) {
+				var value, option, i,
+					options = elem.options,
+					index = elem.selectedIndex,
+					one = elem.type === "select-one",
+					values = one ? null : [],
+					max = one ? index + 1 : options.length;
+
+				if ( index < 0 ) {
+					i = max;
+
+				} else {
+					i = one ? index : 0;
+				}
+
+				// Loop through all the selected options
+				for ( ; i < max; i++ ) {
+					option = options[ i ];
+
+					// Support: IE <=9 only
+					// IE8-9 doesn't update selected after form reset (trac-2551)
+					if ( ( option.selected || i === index ) &&
+
+							// Don't return options that are disabled or in a disabled optgroup
+							!option.disabled &&
+							( !option.parentNode.disabled ||
+								!nodeName( option.parentNode, "optgroup" ) ) ) {
+
+						// Get the specific value for the option
+						value = jQuery( option ).val();
+
+						// We don't need an array for one selects
+						if ( one ) {
+							return value;
+						}
+
+						// Multi-Selects return an array
+						values.push( value );
+					}
+				}
+
+				return values;
+			},
+
+			set: function( elem, value ) {
+				var optionSet, option,
+					options = elem.options,
+					values = jQuery.makeArray( value ),
+					i = options.length;
+
+				while ( i-- ) {
+					option = options[ i ];
+
+					/* eslint-disable no-cond-assign */
+
+					if ( option.selected =
+						jQuery.inArray( jQuery.valHooks.option.get( option ), values ) > -1
+					) {
+						optionSet = true;
+					}
+
+					/* eslint-enable no-cond-assign */
+				}
+
+				// Force browsers to behave consistently when non-matching value is set
+				if ( !optionSet ) {
+					elem.selectedIndex = -1;
+				}
+				return values;
+			}
+		}
+	}
+} );
+
+// Radios and checkboxes getter/setter
+jQuery.each( [ "radio", "checkbox" ], function() {
+	jQuery.valHooks[ this ] = {
+		set: function( elem, value ) {
+			if ( Array.isArray( value ) ) {
+				return ( elem.checked = jQuery.inArray( jQuery( elem ).val(), value ) > -1 );
+			}
+		}
+	};
+	if ( !support.checkOn ) {
+		jQuery.valHooks[ this ].get = function( elem ) {
+			return elem.getAttribute( "value" ) === null ? "on" : elem.value;
+		};
+	}
+} );
+
+} );

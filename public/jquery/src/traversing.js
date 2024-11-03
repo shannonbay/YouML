@@ -1,1 +1,198 @@
-define(["./core","./var/getProto","./var/indexOf","./traversing/var/dir","./traversing/var/siblings","./traversing/var/rneedsContext","./core/nodeName","./core/init","./traversing/findFilter","./selector"],(function(n,t,e,r,i,o,u){"use strict";var s=/^(?:parents|prev(?:Until|All))/,c={children:!0,contents:!0,next:!0,prev:!0};function l(n,t){for(;(n=n[t])&&1!==n.nodeType;);return n}return n.fn.extend({has:function(t){var e=n(t,this),r=e.length;return this.filter((function(){for(var t=0;t<r;t++)if(n.contains(this,e[t]))return!0}))},closest:function(t,e){var r,i=0,u=this.length,s=[],c="string"!=typeof t&&n(t);if(!o.test(t))for(;i<u;i++)for(r=this[i];r&&r!==e;r=r.parentNode)if(r.nodeType<11&&(c?c.index(r)>-1:1===r.nodeType&&n.find.matchesSelector(r,t))){s.push(r);break}return this.pushStack(s.length>1?n.uniqueSort(s):s)},index:function(t){return t?"string"==typeof t?e.call(n(t),this[0]):e.call(this,t.jquery?t[0]:t):this[0]&&this[0].parentNode?this.first().prevAll().length:-1},add:function(t,e){return this.pushStack(n.uniqueSort(n.merge(this.get(),n(t,e))))},addBack:function(n){return this.add(null==n?this.prevObject:this.prevObject.filter(n))}}),n.each({parent:function(n){var t=n.parentNode;return t&&11!==t.nodeType?t:null},parents:function(n){return r(n,"parentNode")},parentsUntil:function(n,t,e){return r(n,"parentNode",e)},next:function(n){return l(n,"nextSibling")},prev:function(n){return l(n,"previousSibling")},nextAll:function(n){return r(n,"nextSibling")},prevAll:function(n){return r(n,"previousSibling")},nextUntil:function(n,t,e){return r(n,"nextSibling",e)},prevUntil:function(n,t,e){return r(n,"previousSibling",e)},siblings:function(n){return i((n.parentNode||{}).firstChild,n)},children:function(n){return i(n.firstChild)},contents:function(e){return null!=e.contentDocument&&t(e.contentDocument)?e.contentDocument:(u(e,"template")&&(e=e.content||e),n.merge([],e.childNodes))}},(function(t,e){n.fn[t]=function(r,i){var o=n.map(this,e,r);return"Until"!==t.slice(-5)&&(i=r),i&&"string"==typeof i&&(o=n.filter(i,o)),this.length>1&&(c[t]||n.uniqueSort(o),s.test(t)&&o.reverse()),this.pushStack(o)}})),n}));
+define( [
+	"./core",
+	"./var/getProto",
+	"./var/indexOf",
+	"./traversing/var/dir",
+	"./traversing/var/siblings",
+	"./traversing/var/rneedsContext",
+	"./core/nodeName",
+
+	"./core/init",
+	"./traversing/findFilter",
+	"./selector"
+], function( jQuery, getProto, indexOf, dir, siblings, rneedsContext, nodeName ) {
+
+"use strict";
+
+var rparentsprev = /^(?:parents|prev(?:Until|All))/,
+
+	// Methods guaranteed to produce a unique set when starting from a unique set
+	guaranteedUnique = {
+		children: true,
+		contents: true,
+		next: true,
+		prev: true
+	};
+
+jQuery.fn.extend( {
+	has: function( target ) {
+		var targets = jQuery( target, this ),
+			l = targets.length;
+
+		return this.filter( function() {
+			var i = 0;
+			for ( ; i < l; i++ ) {
+				if ( jQuery.contains( this, targets[ i ] ) ) {
+					return true;
+				}
+			}
+		} );
+	},
+
+	closest: function( selectors, context ) {
+		var cur,
+			i = 0,
+			l = this.length,
+			matched = [],
+			targets = typeof selectors !== "string" && jQuery( selectors );
+
+		// Positional selectors never match, since there's no _selection_ context
+		if ( !rneedsContext.test( selectors ) ) {
+			for ( ; i < l; i++ ) {
+				for ( cur = this[ i ]; cur && cur !== context; cur = cur.parentNode ) {
+
+					// Always skip document fragments
+					if ( cur.nodeType < 11 && ( targets ?
+						targets.index( cur ) > -1 :
+
+						// Don't pass non-elements to jQuery#find
+						cur.nodeType === 1 &&
+							jQuery.find.matchesSelector( cur, selectors ) ) ) {
+
+						matched.push( cur );
+						break;
+					}
+				}
+			}
+		}
+
+		return this.pushStack( matched.length > 1 ? jQuery.uniqueSort( matched ) : matched );
+	},
+
+	// Determine the position of an element within the set
+	index: function( elem ) {
+
+		// No argument, return index in parent
+		if ( !elem ) {
+			return ( this[ 0 ] && this[ 0 ].parentNode ) ? this.first().prevAll().length : -1;
+		}
+
+		// Index in selector
+		if ( typeof elem === "string" ) {
+			return indexOf.call( jQuery( elem ), this[ 0 ] );
+		}
+
+		// Locate the position of the desired element
+		return indexOf.call( this,
+
+			// If it receives a jQuery object, the first element is used
+			elem.jquery ? elem[ 0 ] : elem
+		);
+	},
+
+	add: function( selector, context ) {
+		return this.pushStack(
+			jQuery.uniqueSort(
+				jQuery.merge( this.get(), jQuery( selector, context ) )
+			)
+		);
+	},
+
+	addBack: function( selector ) {
+		return this.add( selector == null ?
+			this.prevObject : this.prevObject.filter( selector )
+		);
+	}
+} );
+
+function sibling( cur, dir ) {
+	while ( ( cur = cur[ dir ] ) && cur.nodeType !== 1 ) {}
+	return cur;
+}
+
+jQuery.each( {
+	parent: function( elem ) {
+		var parent = elem.parentNode;
+		return parent && parent.nodeType !== 11 ? parent : null;
+	},
+	parents: function( elem ) {
+		return dir( elem, "parentNode" );
+	},
+	parentsUntil: function( elem, _i, until ) {
+		return dir( elem, "parentNode", until );
+	},
+	next: function( elem ) {
+		return sibling( elem, "nextSibling" );
+	},
+	prev: function( elem ) {
+		return sibling( elem, "previousSibling" );
+	},
+	nextAll: function( elem ) {
+		return dir( elem, "nextSibling" );
+	},
+	prevAll: function( elem ) {
+		return dir( elem, "previousSibling" );
+	},
+	nextUntil: function( elem, _i, until ) {
+		return dir( elem, "nextSibling", until );
+	},
+	prevUntil: function( elem, _i, until ) {
+		return dir( elem, "previousSibling", until );
+	},
+	siblings: function( elem ) {
+		return siblings( ( elem.parentNode || {} ).firstChild, elem );
+	},
+	children: function( elem ) {
+		return siblings( elem.firstChild );
+	},
+	contents: function( elem ) {
+		if ( elem.contentDocument != null &&
+
+			// Support: IE 11+
+			// <object> elements with no `data` attribute has an object
+			// `contentDocument` with a `null` prototype.
+			getProto( elem.contentDocument ) ) {
+
+			return elem.contentDocument;
+		}
+
+		// Support: IE 9 - 11 only, iOS 7 only, Android Browser <=4.3 only
+		// Treat the template element as a regular one in browsers that
+		// don't support it.
+		if ( nodeName( elem, "template" ) ) {
+			elem = elem.content || elem;
+		}
+
+		return jQuery.merge( [], elem.childNodes );
+	}
+}, function( name, fn ) {
+	jQuery.fn[ name ] = function( until, selector ) {
+		var matched = jQuery.map( this, fn, until );
+
+		if ( name.slice( -5 ) !== "Until" ) {
+			selector = until;
+		}
+
+		if ( selector && typeof selector === "string" ) {
+			matched = jQuery.filter( selector, matched );
+		}
+
+		if ( this.length > 1 ) {
+
+			// Remove duplicates
+			if ( !guaranteedUnique[ name ] ) {
+				jQuery.uniqueSort( matched );
+			}
+
+			// Reverse order for parents* and prev-derivatives
+			if ( rparentsprev.test( name ) ) {
+				matched.reverse();
+			}
+		}
+
+		return this.pushStack( matched );
+	};
+} );
+
+return jQuery;
+} );

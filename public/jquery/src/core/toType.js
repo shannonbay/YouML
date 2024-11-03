@@ -1,1 +1,20 @@
-define(["../var/class2type","../var/toString"],(function(t,e){"use strict";return function(n){return null==n?n+"":"object"==typeof n||"function"==typeof n?t[e.call(n)]||"object":typeof n}}));
+define( [
+	"../var/class2type",
+	"../var/toString"
+], function( class2type, toString ) {
+
+"use strict";
+
+function toType( obj ) {
+	if ( obj == null ) {
+		return obj + "";
+	}
+
+	// Support: Android <=2.3 only (functionish RegExp)
+	return typeof obj === "object" || typeof obj === "function" ?
+		class2type[ toString.call( obj ) ] || "object" :
+		typeof obj;
+}
+
+return toType;
+} );

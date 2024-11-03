@@ -28,6 +28,8 @@ module.exports = {
         { from: 'node_modules/bpmn-js/dist/assets', to: 'bpmn-js/dist/assets' }, // Copy necessary assets
         { from: 'node_modules/bpmn-js/lib', to: 'bpmn-js/lib' }, // Copy necessary assets
         { from: 'node_modules/jquery', to: 'jquery' }, // Copy necessary assets
+        { from: 'node_modules/plantuml-encoder', to: 'plantuml-encoder' }, // Copy necessary assets
+
       ],
     }),
   ],

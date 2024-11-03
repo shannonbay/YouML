@@ -1,1 +1,23 @@
-import{getNewShapePosition}from"./BpmnAutoPlaceUtil";export default function AutoPlace(e,t){e.on("autoPlace",(function(e){var o=e.shape,n=e.source;return getNewShapePosition(n,o,t)}))}AutoPlace.$inject=["eventBus","elementRegistry"];
+import { getNewShapePosition } from './BpmnAutoPlaceUtil';
+
+/**
+ * @typedef {import('diagram-js/lib/core/EventBus').default} EventBus
+ * @typedef {import('diagram-js/lib/core/ElementRegistry').default} ElementRegistry
+ */
+
+/**
+ * BPMN auto-place behavior.
+ *
+ * @param {EventBus} eventBus
+ * @param {ElementRegistry} elementRegistry
+ */
+export default function AutoPlace(eventBus, elementRegistry) {
+  eventBus.on('autoPlace', function(context) {
+    var shape = context.shape,
+        source = context.source;
+
+    return getNewShapePosition(source, shape, elementRegistry);
+  });
+}
+
+AutoPlace.$inject = [ 'eventBus', 'elementRegistry' ];

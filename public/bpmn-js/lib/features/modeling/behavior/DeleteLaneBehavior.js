@@ -1,1 +1,163 @@
-import inherits from"inherits-browser";import CommandInterceptor from"diagram-js/lib/command/CommandInterceptor";import{is}from"../../../util/ModelUtil";import{getChildLanes}from"../util/LaneUtil";import{isHorizontal}from"../../../util/DiUtil";import{eachElement}from"diagram-js/lib/util/Elements";var LOW_PRIORITY=500;export default function DeleteLaneBehavior(e,t){CommandInterceptor.call(this,e),this.postExecuted("shape.delete",LOW_PRIORITY,(function(e){var n=e.context,i=n.hints,a=n.shape,s=n.oldParent;is(a,"bpmn:Lane")&&(i&&i.nested||function(e,n){var i,a,s,h,l,o=isHorizontal(e),r=getChildLanes(n),m=[],p=[],c=[],g=[];eachElement(r,(function(t){return o?t.y>e.y?p.push(t):m.push(t):t.x>e.x?g.push(t):c.push(t),t.children})),r.length&&(i=o?p.length&&m.length?e.height/2:e.height:g.length&&c.length?e.width/2:e.width,m.length&&(a=t.calculateAdjustments(m,"y",i,e.y-10),t.makeSpace(a.movingShapes,a.resizingShapes,{x:0,y:i},"s")),p.length&&(s=t.calculateAdjustments(p,"y",-i,e.y+e.height+10),t.makeSpace(s.movingShapes,s.resizingShapes,{x:0,y:-i},"n")),c.length&&(h=t.calculateAdjustments(c,"x",i,e.x-10),t.makeSpace(h.movingShapes,h.resizingShapes,{x:i,y:0},"e")),g.length&&(l=t.calculateAdjustments(g,"x",-i,e.x+e.width+10),t.makeSpace(l.movingShapes,l.resizingShapes,{x:-i,y:0},"w")))}(a,s))}))}DeleteLaneBehavior.$inject=["eventBus","spaceTool"],inherits(DeleteLaneBehavior,CommandInterceptor);
+import inherits from 'inherits-browser';
+
+import CommandInterceptor from 'diagram-js/lib/command/CommandInterceptor';
+
+import { is } from '../../../util/ModelUtil';
+
+import {
+  getChildLanes
+} from '../util/LaneUtil';
+
+import {
+  isHorizontal
+} from '../../../util/DiUtil';
+
+import {
+  eachElement
+} from 'diagram-js/lib/util/Elements';
+
+/**
+ * @typedef {import('diagram-js/lib/core/EventBus').default} EventBus
+ * @typedef {import('../../space-tool/BpmnSpaceTool').default} SpaceTool
+ */
+
+var LOW_PRIORITY = 500;
+
+
+/**
+ * BPMN specific delete lane behavior.
+ *
+ * @param {EventBus} eventBus
+ * @param {SpaceTool} spaceTool
+ */
+export default function DeleteLaneBehavior(eventBus, spaceTool) {
+
+  CommandInterceptor.call(this, eventBus);
+
+
+  function compensateLaneDelete(shape, oldParent) {
+    var isHorizontalLane = isHorizontal(shape);
+
+    var siblings = getChildLanes(oldParent);
+
+    var topAffected = [];
+    var bottomAffected = [];
+    var leftAffected = [];
+    var rightAffected = [];
+
+    eachElement(siblings, function(element) {
+
+      if (isHorizontalLane) {
+        if (element.y > shape.y) {
+          bottomAffected.push(element);
+        } else {
+          topAffected.push(element);
+        }
+      } else {
+        if (element.x > shape.x) {
+          rightAffected.push(element);
+        } else {
+          leftAffected.push(element);
+        }
+      }
+
+      return element.children;
+    });
+
+    if (!siblings.length) {
+      return;
+    }
+
+    var offset;
+
+    if (isHorizontalLane) {
+      if (bottomAffected.length && topAffected.length) {
+        offset = shape.height / 2;
+      } else {
+        offset = shape.height;
+      }
+    } else {
+      if (rightAffected.length && leftAffected.length) {
+        offset = shape.width / 2;
+      } else {
+        offset = shape.width;
+      }
+    }
+
+    var topAdjustments,
+        bottomAdjustments,
+        leftAdjustments,
+        rightAdjustments;
+
+    if (topAffected.length) {
+      topAdjustments = spaceTool.calculateAdjustments(
+        topAffected, 'y', offset, shape.y - 10);
+
+      spaceTool.makeSpace(
+        topAdjustments.movingShapes,
+        topAdjustments.resizingShapes,
+        { x: 0, y: offset }, 's');
+    }
+
+    if (bottomAffected.length) {
+      bottomAdjustments = spaceTool.calculateAdjustments(
+        bottomAffected, 'y', -offset, shape.y + shape.height + 10);
+
+      spaceTool.makeSpace(
+        bottomAdjustments.movingShapes,
+        bottomAdjustments.resizingShapes,
+        { x: 0, y: -offset }, 'n');
+    }
+
+    if (leftAffected.length) {
+      leftAdjustments = spaceTool.calculateAdjustments(
+        leftAffected, 'x', offset, shape.x - 10);
+
+      spaceTool.makeSpace(
+        leftAdjustments.movingShapes,
+        leftAdjustments.resizingShapes,
+        { x: offset, y: 0 }, 'e');
+    }
+
+    if (rightAffected.length) {
+      rightAdjustments = spaceTool.calculateAdjustments(
+        rightAffected, 'x', -offset, shape.x + shape.width + 10);
+
+      spaceTool.makeSpace(
+        rightAdjustments.movingShapes,
+        rightAdjustments.resizingShapes,
+        { x: -offset, y: 0 }, 'w');
+    }
+  }
+
+
+  /**
+   * Adjust sizes of other lanes after lane deletion
+   */
+  this.postExecuted('shape.delete', LOW_PRIORITY, function(event) {
+
+    var context = event.context,
+        hints = context.hints,
+        shape = context.shape,
+        oldParent = context.oldParent;
+
+    // only compensate lane deletes
+    if (!is(shape, 'bpmn:Lane')) {
+      return;
+    }
+
+    // compensate root deletes only
+    if (hints && hints.nested) {
+      return;
+    }
+
+    compensateLaneDelete(shape, oldParent);
+  });
+}
+
+DeleteLaneBehavior.$inject = [
+  'eventBus',
+  'spaceTool'
+];
+
+inherits(DeleteLaneBehavior, CommandInterceptor);

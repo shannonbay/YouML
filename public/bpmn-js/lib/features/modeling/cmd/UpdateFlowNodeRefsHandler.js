@@ -1,1 +1,218 @@
-import{collectLanes,getLanesRoot}from"../util/LaneUtil";import{is}from"../../../util/ModelUtil";import{add as collectionAdd,remove as collectionRemove}from"diagram-js/lib/util/Collections";import{asTRBL}from"diagram-js/lib/layout/LayoutUtil";var FLOW_NODE_REFS_ATTR="flowNodeRef",LANES_ATTR="lanes";export default function UpdateFlowNodeRefsHandler(e){this._elementRegistry=e}UpdateFlowNodeRefsHandler.$inject=["elementRegistry"],UpdateFlowNodeRefsHandler.prototype._computeUpdates=function(e,o){var t=[],n=[],r={},i=[];function a(e){-1===t.indexOf(e)&&(i.push(e),t.push(e))}return o.forEach((function(e){var o=getLanesRoot(e);o&&-1===t.indexOf(o)&&(o.children.filter((function(e){return is(e,"bpmn:FlowNode")})).forEach(a),t.push(o))})),e.forEach(a),i.forEach((function(e){var o=e.businessObject,t=o.get(LANES_ATTR).slice(),i=function(e){if(!e.parent)return[];var o=function(e){var o=getLanesRoot(e);return r[o.id]||(r[o.id]=collectLanes(o)),r[o.id]}(e);return o.filter((function(o){return t=e,n=asTRBL(o),r=t.x+t.width/2,i=t.y+t.height/2,r>n.left&&r<n.right&&i>n.top&&i<n.bottom;var t,n,r,i})).map((function(e){return e.businessObject}))}(e);n.push({flowNode:o,remove:t,add:i})})),o.forEach((function(e){var o=e.businessObject;e.parent||o.get(FLOW_NODE_REFS_ATTR).forEach((function(e){n.push({flowNode:e,remove:[o],add:[]})}))})),n},UpdateFlowNodeRefsHandler.prototype.execute=function(e){var o=e.updates;return o||(o=e.updates=this._computeUpdates(e.flowNodeShapes,e.laneShapes)),o.forEach((function(e){var o=e.flowNode,t=o.get(LANES_ATTR);e.remove.forEach((function(e){collectionRemove(t,e),collectionRemove(e.get(FLOW_NODE_REFS_ATTR),o)})),e.add.forEach((function(e){collectionAdd(t,e),collectionAdd(e.get(FLOW_NODE_REFS_ATTR),o)}))})),[]},UpdateFlowNodeRefsHandler.prototype.revert=function(e){return e.updates.forEach((function(e){var o=e.flowNode,t=o.get(LANES_ATTR);e.add.forEach((function(e){collectionRemove(t,e),collectionRemove(e.get(FLOW_NODE_REFS_ATTR),o)})),e.remove.forEach((function(e){collectionAdd(t,e),collectionAdd(e.get(FLOW_NODE_REFS_ATTR),o)}))})),[]};
+import {
+  collectLanes,
+  getLanesRoot
+} from '../util/LaneUtil';
+
+import {
+  is
+} from '../../../util/ModelUtil';
+
+import {
+  add as collectionAdd,
+  remove as collectionRemove
+} from 'diagram-js/lib/util/Collections';
+
+import {
+  asTRBL
+} from 'diagram-js/lib/layout/LayoutUtil';
+
+/**
+ * @typedef {import('diagram-js/lib/command/CommandHandler').default} CommandHandler
+ *
+ * @typedef {import('diagram-js/lib/core/ElementRegistry').default} ElementRegistry
+ *
+ * @typedef {import('../../../model/Types').Shape} Shape
+ */
+
+var FLOW_NODE_REFS_ATTR = 'flowNodeRef',
+    LANES_ATTR = 'lanes';
+
+
+/**
+ * A handler that updates lane refs on changed elements.
+ *
+ * @implements {CommandHandler}
+ *
+ * @param {ElementRegistry} elementRegistry
+ */
+export default function UpdateFlowNodeRefsHandler(elementRegistry) {
+  this._elementRegistry = elementRegistry;
+}
+
+UpdateFlowNodeRefsHandler.$inject = [
+  'elementRegistry'
+];
+
+/**
+ * @param {Shape} flowNodeShapes
+ * @param {Shape} laneShapes
+ *
+ * @return { {
+ *   flowNode: Shape;
+ *   add: Shape[];
+ *   remove: Shape[];
+ * }[] }
+ */
+UpdateFlowNodeRefsHandler.prototype._computeUpdates = function(flowNodeShapes, laneShapes) {
+
+  var handledNodes = [];
+
+  var updates = [];
+
+  var participantCache = {};
+
+  var allFlowNodeShapes = [];
+
+  function isInLaneShape(element, laneShape) {
+
+    var laneTrbl = asTRBL(laneShape);
+
+    var elementMid = {
+      x: element.x + element.width / 2,
+      y: element.y + element.height / 2
+    };
+
+    return elementMid.x > laneTrbl.left &&
+           elementMid.x < laneTrbl.right &&
+           elementMid.y > laneTrbl.top &&
+           elementMid.y < laneTrbl.bottom;
+  }
+
+  function addFlowNodeShape(flowNodeShape) {
+    if (handledNodes.indexOf(flowNodeShape) === -1) {
+      allFlowNodeShapes.push(flowNodeShape);
+      handledNodes.push(flowNodeShape);
+    }
+  }
+
+  function getAllLaneShapes(flowNodeShape) {
+
+    var root = getLanesRoot(flowNodeShape);
+
+    if (!participantCache[root.id]) {
+      participantCache[root.id] = collectLanes(root);
+    }
+
+    return participantCache[root.id];
+  }
+
+  function getNewLanes(flowNodeShape) {
+    if (!flowNodeShape.parent) {
+      return [];
+    }
+
+    var allLaneShapes = getAllLaneShapes(flowNodeShape);
+
+    return allLaneShapes.filter(function(l) {
+      return isInLaneShape(flowNodeShape, l);
+    }).map(function(shape) {
+      return shape.businessObject;
+    });
+  }
+
+  laneShapes.forEach(function(laneShape) {
+    var root = getLanesRoot(laneShape);
+
+    if (!root || handledNodes.indexOf(root) !== -1) {
+      return;
+    }
+
+    var children = root.children.filter(function(c) {
+      return is(c, 'bpmn:FlowNode');
+    });
+
+    children.forEach(addFlowNodeShape);
+
+    handledNodes.push(root);
+  });
+
+  flowNodeShapes.forEach(addFlowNodeShape);
+
+
+  allFlowNodeShapes.forEach(function(flowNodeShape) {
+
+    var flowNode = flowNodeShape.businessObject;
+
+    var lanes = flowNode.get(LANES_ATTR),
+        remove = lanes.slice(),
+        add = getNewLanes(flowNodeShape);
+
+    updates.push({ flowNode: flowNode, remove: remove, add: add });
+  });
+
+  laneShapes.forEach(function(laneShape) {
+
+    var lane = laneShape.businessObject;
+
+    // lane got removed XX-)
+    if (!laneShape.parent) {
+      lane.get(FLOW_NODE_REFS_ATTR).forEach(function(flowNode) {
+        updates.push({ flowNode: flowNode, remove: [ lane ], add: [] });
+      });
+    }
+  });
+
+  return updates;
+};
+
+UpdateFlowNodeRefsHandler.prototype.execute = function(context) {
+
+  var updates = context.updates;
+
+  if (!updates) {
+    updates = context.updates = this._computeUpdates(context.flowNodeShapes, context.laneShapes);
+  }
+
+
+  updates.forEach(function(update) {
+
+    var flowNode = update.flowNode,
+        lanes = flowNode.get(LANES_ATTR);
+
+    // unwire old
+    update.remove.forEach(function(oldLane) {
+      collectionRemove(lanes, oldLane);
+      collectionRemove(oldLane.get(FLOW_NODE_REFS_ATTR), flowNode);
+    });
+
+    // wire new
+    update.add.forEach(function(newLane) {
+      collectionAdd(lanes, newLane);
+      collectionAdd(newLane.get(FLOW_NODE_REFS_ATTR), flowNode);
+    });
+  });
+
+  // TODO(nikku): return changed elements
+  // return [ ... ];
+
+  return [];
+};
+
+
+UpdateFlowNodeRefsHandler.prototype.revert = function(context) {
+
+  var updates = context.updates;
+
+  updates.forEach(function(update) {
+
+    var flowNode = update.flowNode,
+        lanes = flowNode.get(LANES_ATTR);
+
+    // unwire new
+    update.add.forEach(function(newLane) {
+      collectionRemove(lanes, newLane);
+      collectionRemove(newLane.get(FLOW_NODE_REFS_ATTR), flowNode);
+    });
+
+    // wire old
+    update.remove.forEach(function(oldLane) {
+      collectionAdd(lanes, oldLane);
+      collectionAdd(oldLane.get(FLOW_NODE_REFS_ATTR), flowNode);
+    });
+  });
+
+  // TODO(nikku): return changed elements
+  // return [ ... ];
+
+  return [];
+};

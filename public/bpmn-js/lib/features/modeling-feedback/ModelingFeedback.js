@@ -1,1 +1,46 @@
-import{is}from"../../util/ModelUtil";var COLLAB_ERR_MSG="flow elements must be children of pools/participants";export default function ModelingFeedback(e,t,o){e.on(["shape.move.rejected","create.rejected"],(function(e){var i,n,a=e.context,l=a.shape,r=a.target;is(r,"bpmn:Collaboration")&&is(l,"bpmn:FlowNode")&&(i=e,n=o(COLLAB_ERR_MSG),t.add({position:{x:i.x+5,y:i.y+5},type:"error",timeout:2e3,html:"<div>"+n+"</div>"}))}))}ModelingFeedback.$inject=["eventBus","tooltips","translate"];
+import { is } from '../../util/ModelUtil';
+
+/**
+ * @typedef {import('diagram-js/lib/core/EventBus').default} EventBus
+ * @typedef {import('diagram-js/lib/features/tooltips/Tooltips').default} Tooltips
+ * @typedef {import('diagram-js/lib/i18n/translate/translate').default} Translate
+ */
+
+var COLLAB_ERR_MSG = 'flow elements must be children of pools/participants';
+
+/**
+ * @param {EventBus} eventBus
+ * @param {Tooltips} tooltips
+ * @param {Translate} translate
+ */
+export default function ModelingFeedback(eventBus, tooltips, translate) {
+
+  function showError(position, message, timeout) {
+    tooltips.add({
+      position: {
+        x: position.x + 5,
+        y: position.y + 5
+      },
+      type: 'error',
+      timeout: timeout || 2000,
+      html: '<div>' + message + '</div>'
+    });
+  }
+
+  eventBus.on([ 'shape.move.rejected', 'create.rejected' ], function(event) {
+    var context = event.context,
+        shape = context.shape,
+        target = context.target;
+
+    if (is(target, 'bpmn:Collaboration') && is(shape, 'bpmn:FlowNode')) {
+      showError(event, translate(COLLAB_ERR_MSG));
+    }
+  });
+
+}
+
+ModelingFeedback.$inject = [
+  'eventBus',
+  'tooltips',
+  'translate'
+];

@@ -1,1 +1,187 @@
-import inherits from"inherits-browser";import EditorActions from"diagram-js/lib/features/editor-actions/EditorActions";import{filter}from"min-dash";import{is}from"../../util/ModelUtil";import{getBBox}from"diagram-js/lib/util/Elements";export default function BpmnEditorActions(t){t.invoke(EditorActions,this)}inherits(BpmnEditorActions,EditorActions),BpmnEditorActions.$inject=["injector"],BpmnEditorActions.prototype._registerDefaultActions=function(t){EditorActions.prototype._registerDefaultActions.call(this,t);var e=t.get("canvas",!1),i=t.get("elementRegistry",!1),o=t.get("selection",!1),n=t.get("spaceTool",!1),r=t.get("lassoTool",!1),s=t.get("handTool",!1),g=t.get("globalConnect",!1),l=t.get("distributeElements",!1),c=t.get("alignElements",!1),a=t.get("directEditing",!1),m=t.get("searchPad",!1),f=t.get("modeling",!1),u=t.get("contextPad",!1);e&&i&&o&&this._registerAction("selectElements",(function(){var t=e.getRootElement(),n=i.filter((function(e){return e!==t}));return o.select(n),n})),n&&this._registerAction("spaceTool",(function(){n.toggle()})),r&&this._registerAction("lassoTool",(function(){r.toggle()})),s&&this._registerAction("handTool",(function(){s.toggle()})),g&&this._registerAction("globalConnectTool",(function(){g.toggle()})),o&&l&&this._registerAction("distributeElements",(function(t){var e=o.get(),i=t.type;e.length&&l.trigger(e,i)})),o&&c&&this._registerAction("alignElements",(function(t){var e=o.get(),i=[],n=t.type;e.length&&(i=filter(e,(function(t){return!is(t,"bpmn:Lane")})),c.trigger(i,n))})),o&&f&&this._registerAction("setColor",(function(t){var e=o.get();e.length&&f.setColor(e,t)})),o&&a&&this._registerAction("directEditing",(function(){var t=o.get();t.length&&a.activate(t[0])})),m&&this._registerAction("find",(function(){m.toggle()})),e&&f&&this._registerAction("moveToOrigin",(function(){var t,o,n=e.getRootElement();o=is(n,"bpmn:Collaboration")?i.filter((function(t){return is(t.parent,"bpmn:Collaboration")})):i.filter((function(t){return t!==n&&!is(t.parent,"bpmn:SubProcess")})),t=getBBox(o),f.moveElements(o,{x:-t.x,y:-t.y},n)})),o&&u&&this._registerAction("replaceElement",(function(t){u.triggerEntry("replace","click",t)}))};
+import inherits from 'inherits-browser';
+
+import EditorActions from 'diagram-js/lib/features/editor-actions/EditorActions';
+
+import { filter } from 'min-dash';
+
+import { is } from '../../util/ModelUtil';
+
+import {
+  getBBox
+} from 'diagram-js/lib/util/Elements';
+
+/**
+ * @typedef {import('didi').Injector} Injector
+ */
+
+/**
+ * Registers and executes BPMN specific editor actions.
+ *
+ * @param {Injector} injector
+ */
+export default function BpmnEditorActions(injector) {
+  injector.invoke(EditorActions, this);
+}
+
+inherits(BpmnEditorActions, EditorActions);
+
+BpmnEditorActions.$inject = [
+  'injector'
+];
+
+/**
+ * Register default actions.
+ *
+ * @param {Injector} injector
+ */
+BpmnEditorActions.prototype._registerDefaultActions = function(injector) {
+
+  // (0) invoke super method
+
+  EditorActions.prototype._registerDefaultActions.call(this, injector);
+
+  // (1) retrieve optional components to integrate with
+
+  var canvas = injector.get('canvas', false);
+  var elementRegistry = injector.get('elementRegistry', false);
+  var selection = injector.get('selection', false);
+  var spaceTool = injector.get('spaceTool', false);
+  var lassoTool = injector.get('lassoTool', false);
+  var handTool = injector.get('handTool', false);
+  var globalConnect = injector.get('globalConnect', false);
+  var distributeElements = injector.get('distributeElements', false);
+  var alignElements = injector.get('alignElements', false);
+  var directEditing = injector.get('directEditing', false);
+  var searchPad = injector.get('searchPad', false);
+  var modeling = injector.get('modeling', false);
+  var contextPad = injector.get('contextPad', false);
+
+  // (2) check components and register actions
+
+  if (canvas && elementRegistry && selection) {
+    this._registerAction('selectElements', function() {
+
+      // select all elements except for the invisible
+      // root element
+      var rootElement = canvas.getRootElement();
+
+      var elements = elementRegistry.filter(function(element) {
+        return element !== rootElement;
+      });
+
+      selection.select(elements);
+
+      return elements;
+    });
+  }
+
+  if (spaceTool) {
+    this._registerAction('spaceTool', function() {
+      spaceTool.toggle();
+    });
+  }
+
+  if (lassoTool) {
+    this._registerAction('lassoTool', function() {
+      lassoTool.toggle();
+    });
+  }
+
+  if (handTool) {
+    this._registerAction('handTool', function() {
+      handTool.toggle();
+    });
+  }
+
+  if (globalConnect) {
+    this._registerAction('globalConnectTool', function() {
+      globalConnect.toggle();
+    });
+  }
+
+  if (selection && distributeElements) {
+    this._registerAction('distributeElements', function(opts) {
+      var currentSelection = selection.get(),
+          type = opts.type;
+
+      if (currentSelection.length) {
+        distributeElements.trigger(currentSelection, type);
+      }
+    });
+  }
+
+  if (selection && alignElements) {
+    this._registerAction('alignElements', function(opts) {
+      var currentSelection = selection.get(),
+          aligneableElements = [],
+          type = opts.type;
+
+      if (currentSelection.length) {
+        aligneableElements = filter(currentSelection, function(element) {
+          return !is(element, 'bpmn:Lane');
+        });
+
+        alignElements.trigger(aligneableElements, type);
+      }
+    });
+  }
+
+  if (selection && modeling) {
+    this._registerAction('setColor', function(opts) {
+      var currentSelection = selection.get();
+
+      if (currentSelection.length) {
+        modeling.setColor(currentSelection, opts);
+      }
+    });
+  }
+
+  if (selection && directEditing) {
+    this._registerAction('directEditing', function() {
+      var currentSelection = selection.get();
+
+      if (currentSelection.length) {
+        directEditing.activate(currentSelection[0]);
+      }
+    });
+  }
+
+  if (searchPad) {
+    this._registerAction('find', function() {
+      searchPad.toggle();
+    });
+  }
+
+  if (canvas && modeling) {
+    this._registerAction('moveToOrigin', function() {
+      var rootElement = canvas.getRootElement(),
+          boundingBox,
+          elements;
+
+      if (is(rootElement, 'bpmn:Collaboration')) {
+        elements = elementRegistry.filter(function(element) {
+          return is(element.parent, 'bpmn:Collaboration');
+        });
+      } else {
+        elements = elementRegistry.filter(function(element) {
+          return element !== rootElement && !is(element.parent, 'bpmn:SubProcess');
+        });
+      }
+
+      boundingBox = getBBox(elements);
+
+      modeling.moveElements(
+        elements,
+        { x: -boundingBox.x, y: -boundingBox.y },
+        rootElement
+      );
+    });
+  }
+
+  if (selection && contextPad) {
+    this._registerAction('replaceElement', function(event) {
+      contextPad.triggerEntry('replace', 'click', event);
+    });
+  }
+
+};

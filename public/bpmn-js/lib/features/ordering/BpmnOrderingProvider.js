@@ -1,1 +1,192 @@
-import inherits from"inherits-browser";import OrderingProvider from"diagram-js/lib/features/ordering/OrderingProvider";import{is,isAny}from"../modeling/util/ModelingUtil";import{findIndex,find}from"min-dash";export default function BpmnOrderingProvider(e,r){OrderingProvider.call(this,e);var n=[{type:"bpmn:SubProcess",order:{level:6}},{type:"bpmn:SequenceFlow",order:{level:9,containers:["bpmn:Participant","bpmn:FlowElementsContainer"]}},{type:"bpmn:DataAssociation",order:{level:9,containers:["bpmn:Collaboration","bpmn:FlowElementsContainer"]}},{type:"bpmn:TextAnnotation",order:{level:9}},{type:"bpmn:MessageFlow",order:{level:9,containers:["bpmn:Collaboration"]}},{type:"bpmn:Association",order:{level:6,containers:["bpmn:Participant","bpmn:FlowElementsContainer","bpmn:Collaboration"]}},{type:"bpmn:BoundaryEvent",order:{level:8}},{type:"bpmn:Group",order:{level:10,containers:["bpmn:Collaboration","bpmn:FlowElementsContainer"]}},{type:"bpmn:FlowElement",order:{level:5}},{type:"bpmn:Participant",order:{level:-2}},{type:"bpmn:Lane",order:{level:-1}}];function o(e){var r=e.order;if(r||(e.order=r=function(e){if(e.labelTarget)return{level:10};var r=find(n,(function(r){return isAny(e,[r.type])}));return r&&r.order||{level:1}}(e)),!r)throw new Error(`no order for <${e.id}>`);return r}this.getOrdering=function(e,n){if(e.labelTarget||is(e,"bpmn:TextAnnotation"))return{parent:r.findRoot(n)||r.getRootElement(),index:-1};var t=o(e);t.containers&&(n=function(e,r,n){for(var o=r;o&&!isAny(o,n);)o=o.parent;if(!o)throw new Error(`no parent for <${e.id}> in <${r&&r.id}>`);return o}(e,n,t.containers));var i=n.children.indexOf(e),l=findIndex(n.children,(function(r){return!(!e.labelTarget&&r.labelTarget)&&t.level<o(r).level}));return-1!==l&&-1!==i&&i<l&&(l-=1),{index:l,parent:n}}}BpmnOrderingProvider.$inject=["eventBus","canvas"],inherits(BpmnOrderingProvider,OrderingProvider);
+import inherits from 'inherits-browser';
+
+import OrderingProvider from 'diagram-js/lib/features/ordering/OrderingProvider';
+
+import {
+  is,
+  isAny
+} from '../modeling/util/ModelingUtil';
+
+import {
+  findIndex,
+  find
+} from 'min-dash';
+
+/**
+ * @typedef {import('diagram-js/lib/core/Canvas').default} Canvas
+ * @typedef {import('diagram-js/lib/core/EventBus').default} EventBus
+ */
+
+/**
+ * A BPMN-specific ordering provider.
+ *
+ * @param {EventBus} eventBus
+ * @param {Canvas} canvas
+ */
+export default function BpmnOrderingProvider(eventBus, canvas) {
+
+  OrderingProvider.call(this, eventBus);
+
+  var orders = [
+    { type: 'bpmn:SubProcess', order: { level: 6 } },
+
+    // handle SequenceFlow(s) like message flows and render them always on top
+    {
+      type: 'bpmn:SequenceFlow',
+      order: {
+        level: 9,
+        containers: [
+          'bpmn:Participant',
+          'bpmn:FlowElementsContainer'
+        ]
+      }
+    },
+
+    // handle DataAssociation(s) like message flows and render them always on top
+    {
+      type: 'bpmn:DataAssociation',
+      order: {
+        level: 9,
+        containers: [
+          'bpmn:Collaboration',
+          'bpmn:FlowElementsContainer'
+        ]
+      }
+    },
+    {
+      type: 'bpmn:TextAnnotation',
+      order: {
+        level: 9
+      }
+    },
+    {
+      type: 'bpmn:MessageFlow', order: {
+        level: 9,
+        containers: [ 'bpmn:Collaboration' ]
+      }
+    },
+    {
+      type: 'bpmn:Association',
+      order: {
+        level: 6,
+        containers: [
+          'bpmn:Participant',
+          'bpmn:FlowElementsContainer',
+          'bpmn:Collaboration'
+        ]
+      }
+    },
+    { type: 'bpmn:BoundaryEvent', order: { level: 8 } },
+    {
+      type: 'bpmn:Group',
+      order: {
+        level: 10,
+        containers: [
+          'bpmn:Collaboration',
+          'bpmn:FlowElementsContainer'
+        ]
+      }
+    },
+    { type: 'bpmn:FlowElement', order: { level: 5 } },
+    { type: 'bpmn:Participant', order: { level: -2 } },
+    { type: 'bpmn:Lane', order: { level: -1 } }
+  ];
+
+  function computeOrder(element) {
+    if (element.labelTarget) {
+      return { level: 10 };
+    }
+
+    var entry = find(orders, function(o) {
+      return isAny(element, [ o.type ]);
+    });
+
+    return entry && entry.order || { level: 1 };
+  }
+
+  function getOrder(element) {
+
+    var order = element.order;
+
+    if (!order) {
+      element.order = order = computeOrder(element);
+    }
+
+    if (!order) {
+      throw new Error(`no order for <${ element.id }>`);
+    }
+
+    return order;
+  }
+
+  function findActualParent(element, newParent, containers) {
+
+    var actualParent = newParent;
+
+    while (actualParent) {
+
+      if (isAny(actualParent, containers)) {
+        break;
+      }
+
+      actualParent = actualParent.parent;
+    }
+
+    if (!actualParent) {
+      throw new Error(`no parent for <${ element.id }> in <${ newParent && newParent.id }>`);
+    }
+
+    return actualParent;
+  }
+
+  this.getOrdering = function(element, newParent) {
+
+    // render labels and text annotations always on top
+    if (element.labelTarget || is(element, 'bpmn:TextAnnotation')) {
+      return {
+        parent: canvas.findRoot(newParent) || canvas.getRootElement(),
+        index: -1
+      };
+    }
+
+    var elementOrder = getOrder(element);
+
+    if (elementOrder.containers) {
+      newParent = findActualParent(element, newParent, elementOrder.containers);
+    }
+
+    var currentIndex = newParent.children.indexOf(element);
+
+    var insertIndex = findIndex(newParent.children, function(child) {
+
+      // do not compare with labels, they are created
+      // in the wrong order (right after elements) during import and
+      // mess up the positioning.
+      if (!element.labelTarget && child.labelTarget) {
+        return false;
+      }
+
+      return elementOrder.level < getOrder(child).level;
+    });
+
+
+    // if the element is already in the child list at
+    // a smaller index, we need to adjust the insert index.
+    // this takes into account that the element is being removed
+    // before being re-inserted
+    if (insertIndex !== -1) {
+      if (currentIndex !== -1 && currentIndex < insertIndex) {
+        insertIndex -= 1;
+      }
+    }
+
+    return {
+      index: insertIndex,
+      parent: newParent
+    };
+  };
+}
+
+BpmnOrderingProvider.$inject = [ 'eventBus', 'canvas' ];
+
+inherits(BpmnOrderingProvider, OrderingProvider);

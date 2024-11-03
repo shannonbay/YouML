@@ -1,1 +1,7 @@
-define(["./arr"],(function(e){"use strict";return e.slice}));
+define( [
+	"./arr"
+], function( arr ) {
+	"use strict";
+
+	return arr.slice;
+} );

@@ -1,1 +1,289 @@
-import inherits from"inherits-browser";import CreateMoveSnapping from"diagram-js/lib/features/snapping/CreateMoveSnapping";import{isSnapped,setSnapped,topLeft,bottomRight}from"diagram-js/lib/features/snapping/SnapUtil";import{isExpanded}from"../../util/DiUtil";import{is}from"../../util/ModelUtil";import{asTRBL,getMid}from"diagram-js/lib/layout/LayoutUtil";import{getBoundaryAttachment}from"./BpmnSnappingUtil";import{forEach}from"min-dash";var HIGH_PRIORITY=1500;export default function BpmnCreateMoveSnapping(t,n){n.invoke(CreateMoveSnapping,this),t.on(["create.move","create.end"],HIGH_PRIORITY,setSnappedIfConstrained),t.on(["create.move","create.end","shape.move.move","shape.move.end"],HIGH_PRIORITY,(function(t){var n=t.context,e=n.canExecute,i=n.target;e&&("attach"===e||e.attach)&&!isSnapped(t)&&snapBoundaryEvent(t,i)}))}function snapBoundaryEvent(t,n){var e,i=asTRBL(n),a=getBoundaryAttachment(t,n),o=t.context.shape;e=o.parent?{x:0,y:0}:getMid(o),/top/.test(a)?setSnapped(t,"y",i.top-e.y):/bottom/.test(a)&&setSnapped(t,"y",i.bottom-e.y),/left/.test(a)?setSnapped(t,"x",i.left-e.x):/right/.test(a)&&setSnapped(t,"x",i.right-e.x)}function areAll(t,n){return t.every((function(t){return is(t,n)}))}function isContainer(t){return!(!is(t,"bpmn:SubProcess")||!isExpanded(t))||is(t,"bpmn:Participant")}function setSnappedIfConstrained(t){var n=t.context.createConstraints;if(n){var e=n.top,i=n.right,a=n.bottom,o=n.left;(o&&o>=t.x||i&&i<=t.x)&&setSnapped(t,"x",t.x),(e&&e>=t.y||a&&a<=t.y)&&setSnapped(t,"y",t.y)}}function includes(t,n){return-1!==t.indexOf(n)}function getDockingSnapOrigin(t,n,e){return n?{x:t.x-e.x,y:t.y-e.y}:{x:t.x,y:t.y}}inherits(BpmnCreateMoveSnapping,CreateMoveSnapping),BpmnCreateMoveSnapping.$inject=["eventBus","injector"],BpmnCreateMoveSnapping.prototype.initSnap=function(t){var n=CreateMoveSnapping.prototype.initSnap.call(this,t),e=t.shape,i=!!this._elementRegistry.get(e.id);return forEach(e.outgoing,(function(e){var a=e.waypoints[0];a=a.original||a,n.setSnapOrigin(e.id+"-docking",getDockingSnapOrigin(a,i,t))})),forEach(e.incoming,(function(e){var a=e.waypoints[e.waypoints.length-1];a=a.original||a,n.setSnapOrigin(e.id+"-docking",getDockingSnapOrigin(a,i,t))})),is(e,"bpmn:Participant")&&n.setSnapLocations(["top-left","bottom-right","mid"]),n},BpmnCreateMoveSnapping.prototype.addSnapTargetPoints=function(t,n,e){CreateMoveSnapping.prototype.addSnapTargetPoints.call(this,t,n,e);var i=this.getSnapTargets(n,e);forEach(i,(function(e){(isContainer(e)||areAll([n,e],"bpmn:TextAnnotation"))&&(t.add("top-left",topLeft(e)),t.add("bottom-right",bottomRight(e)))}));var a=this._elementRegistry;return forEach(n.incoming,(function(e){if(a.get(n.id)){includes(i,e.source)||t.add("mid",getMid(e.source));var o=e.waypoints[0];t.add(e.id+"-docking",o.original||o)}})),forEach(n.outgoing,(function(e){if(a.get(n.id)){includes(i,e.target)||t.add("mid",getMid(e.target));var o=e.waypoints[e.waypoints.length-1];t.add(e.id+"-docking",o.original||o)}})),is(e,"bpmn:SequenceFlow")&&(t=this.addSnapTargetPoints(t,n,e.parent)),t},BpmnCreateMoveSnapping.prototype.getSnapTargets=function(t,n){return CreateMoveSnapping.prototype.getSnapTargets.call(this,t,n).filter((function(t){return!is(t,"bpmn:Lane")}))};
+import inherits from 'inherits-browser';
+
+import CreateMoveSnapping from 'diagram-js/lib/features/snapping/CreateMoveSnapping';
+
+import {
+  isSnapped,
+  setSnapped,
+  topLeft,
+  bottomRight
+} from 'diagram-js/lib/features/snapping/SnapUtil';
+
+import { isExpanded } from '../../util/DiUtil';
+
+import { is } from '../../util/ModelUtil';
+
+import {
+  asTRBL,
+  getMid
+} from 'diagram-js/lib/layout/LayoutUtil';
+
+import { getBoundaryAttachment } from './BpmnSnappingUtil';
+
+import { forEach } from 'min-dash';
+
+/**
+ * @typedef {import('diagram-js/lib/core/EventBus').default} EventBus
+ * @typedef {import('didi').Injector} Injector
+ *
+ * @typedef {import('diagram-js/lib/features/snapping/SnapContext').default} SnapContext
+ * @typedef {import('diagram-js/lib/features/snapping/SnapContext').SnapPoints} SnapPoints
+ *
+ * @typedef {import('diagram-js/lib/core/EventBus').Event} Event
+ *
+ * @typedef {import('../../model/Types').Element} Element
+ * @typedef {import('../../model/Types').Shape} Shape
+ */
+
+var HIGH_PRIORITY = 1500;
+
+
+/**
+ * Snap during create and move.
+ *
+ * @param {EventBus} eventBus
+ * @param {Injector} injector
+ */
+export default function BpmnCreateMoveSnapping(eventBus, injector) {
+  injector.invoke(CreateMoveSnapping, this);
+
+  // creating first participant
+  eventBus.on([ 'create.move', 'create.end' ], HIGH_PRIORITY, setSnappedIfConstrained);
+
+  // snap boundary events
+  eventBus.on([
+    'create.move',
+    'create.end',
+    'shape.move.move',
+    'shape.move.end'
+  ], HIGH_PRIORITY, function(event) {
+    var context = event.context,
+        canExecute = context.canExecute,
+        target = context.target;
+
+    var canAttach = canExecute && (canExecute === 'attach' || canExecute.attach);
+
+    if (canAttach && !isSnapped(event)) {
+      snapBoundaryEvent(event, target);
+    }
+  });
+}
+
+inherits(BpmnCreateMoveSnapping, CreateMoveSnapping);
+
+BpmnCreateMoveSnapping.$inject = [
+  'eventBus',
+  'injector'
+];
+
+/**
+ * @param {Event} event
+ *
+ * @return {SnapContext}
+ */
+BpmnCreateMoveSnapping.prototype.initSnap = function(event) {
+  var snapContext = CreateMoveSnapping.prototype.initSnap.call(this, event);
+
+  var shape = event.shape;
+
+  var isMove = !!this._elementRegistry.get(shape.id);
+
+  // snap to docking points
+  forEach(shape.outgoing, function(connection) {
+    var docking = connection.waypoints[0];
+
+    docking = docking.original || docking;
+
+    snapContext.setSnapOrigin(connection.id + '-docking', getDockingSnapOrigin(docking, isMove, event));
+  });
+
+  forEach(shape.incoming, function(connection) {
+    var docking = connection.waypoints[connection.waypoints.length - 1];
+
+    docking = docking.original || docking;
+
+    snapContext.setSnapOrigin(connection.id + '-docking', getDockingSnapOrigin(docking, isMove, event));
+  });
+
+  if (is(shape, 'bpmn:Participant')) {
+
+    // snap to borders with higher priority
+    snapContext.setSnapLocations([ 'top-left', 'bottom-right', 'mid' ]);
+  }
+
+  return snapContext;
+};
+
+/**
+ * @param {SnapPoints} snapPoints
+ * @param {Shape} shape
+ * @param {Shape} target
+ *
+ * @return {SnapPoints}
+ */
+BpmnCreateMoveSnapping.prototype.addSnapTargetPoints = function(snapPoints, shape, target) {
+  CreateMoveSnapping.prototype.addSnapTargetPoints.call(this, snapPoints, shape, target);
+
+  var snapTargets = this.getSnapTargets(shape, target);
+
+  forEach(snapTargets, function(snapTarget) {
+
+    // handle TRBL alignment
+    //
+    // * with container elements
+    // * with text annotations
+    if (isContainer(snapTarget) || areAll([ shape, snapTarget ], 'bpmn:TextAnnotation')) {
+      snapPoints.add('top-left', topLeft(snapTarget));
+      snapPoints.add('bottom-right', bottomRight(snapTarget));
+    }
+  });
+
+  var elementRegistry = this._elementRegistry;
+
+  // snap to docking points if not create mode
+  forEach(shape.incoming, function(connection) {
+    if (elementRegistry.get(shape.id)) {
+
+      if (!includes(snapTargets, connection.source)) {
+        snapPoints.add('mid', getMid(connection.source));
+      }
+
+      var docking = connection.waypoints[0];
+      snapPoints.add(connection.id + '-docking', docking.original || docking);
+    }
+  });
+
+  forEach(shape.outgoing, function(connection) {
+    if (elementRegistry.get(shape.id)) {
+
+      if (!includes(snapTargets, connection.target)) {
+        snapPoints.add('mid', getMid(connection.target));
+      }
+
+      var docking = connection.waypoints[ connection.waypoints.length - 1 ];
+
+      snapPoints.add(connection.id + '-docking', docking.original || docking);
+    }
+  });
+
+  // add sequence flow parents as snap targets
+  if (is(target, 'bpmn:SequenceFlow')) {
+    snapPoints = this.addSnapTargetPoints(snapPoints, shape, target.parent);
+  }
+
+  return snapPoints;
+};
+
+/**
+ * @param {Shape} shape
+ * @param {Shape} target
+ *
+ * @return {Shape[]}
+ */
+BpmnCreateMoveSnapping.prototype.getSnapTargets = function(shape, target) {
+  return CreateMoveSnapping.prototype.getSnapTargets.call(this, shape, target)
+    .filter(function(snapTarget) {
+
+      // do not snap to lanes
+      return !is(snapTarget, 'bpmn:Lane');
+    });
+};
+
+// helpers //////////
+
+/**
+ * @param {Shape} event
+ * @param {Shape} target
+ */
+function snapBoundaryEvent(event, target) {
+  var targetTRBL = asTRBL(target);
+
+  var direction = getBoundaryAttachment(event, target);
+
+  var context = event.context,
+      shape = context.shape;
+
+  var offset;
+
+  if (shape.parent) {
+    offset = { x: 0, y: 0 };
+  } else {
+    offset = getMid(shape);
+  }
+
+  if (/top/.test(direction)) {
+    setSnapped(event, 'y', targetTRBL.top - offset.y);
+  } else if (/bottom/.test(direction)) {
+    setSnapped(event, 'y', targetTRBL.bottom - offset.y);
+  }
+
+  if (/left/.test(direction)) {
+    setSnapped(event, 'x', targetTRBL.left - offset.x);
+  } else if (/right/.test(direction)) {
+    setSnapped(event, 'x', targetTRBL.right - offset.x);
+  }
+}
+
+/**
+ * @param {Element[]} elements
+ * @param {string} type
+ *
+ * @return {boolean}
+ */
+function areAll(elements, type) {
+  return elements.every(function(el) {
+    return is(el, type);
+  });
+}
+
+/**
+ * @param {Element} element
+ */
+function isContainer(element) {
+  if (is(element, 'bpmn:SubProcess') && isExpanded(element)) {
+    return true;
+  }
+
+  return is(element, 'bpmn:Participant');
+}
+
+/**
+ * @param {Event} event
+ */
+function setSnappedIfConstrained(event) {
+  var context = event.context,
+      createConstraints = context.createConstraints;
+
+  if (!createConstraints) {
+    return;
+  }
+
+  var top = createConstraints.top,
+      right = createConstraints.right,
+      bottom = createConstraints.bottom,
+      left = createConstraints.left;
+
+  if ((left && left >= event.x) || (right && right <= event.x)) {
+    setSnapped(event, 'x', event.x);
+  }
+
+  if ((top && top >= event.y) || (bottom && bottom <= event.y)) {
+    setSnapped(event, 'y', event.y);
+  }
+}
+
+function includes(array, value) {
+  return array.indexOf(value) !== -1;
+}
+
+function getDockingSnapOrigin(docking, isMove, event) {
+  return isMove ? (
+    {
+      x: docking.x - event.x,
+      y: docking.y - event.y
+    }
+  ) : {
+    x: docking.x,
+    y: docking.y
+  };
+}

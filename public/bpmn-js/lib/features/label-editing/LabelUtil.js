@@ -1,1 +1,4 @@
-export{getLabel,setLabel}from"../../util/LabelUtil";
+export {
+  getLabel,
+  setLabel
+} from '../../util/LabelUtil';

@@ -1,1 +1,391 @@
-import{pick,assign,filter,forEach,isArray,isUndefined,has}from"min-dash";import{is,getDi,getBusinessObject}from"../../util/ModelUtil";import{isAny}from"../modeling/util/ModelingUtil";import{isExpanded,isEventSubProcess,isHorizontal}from"../../util/DiUtil";import{getPropertyNames}from"../copy-paste/ModdleCopy";function copyProperties(e,i,t){isArray(t)||(t=[t]),forEach(t,(function(t){isUndefined(e[t])||(i[t]=e[t])}))}var CUSTOM_PROPERTIES=["cancelActivity","instantiate","eventGatewayType","triggeredByEvent","isInterrupting"];function shouldToggleCollapsed(e,i){var t=e&&has(e,"collapsed")?e.collapsed:!isExpanded(e);return t!==(i&&(has(i,"collapsed")||has(i,"isExpanded"))?has(i,"collapsed")?i.collapsed:!i.isExpanded:t)}export default function BpmnReplace(e,i,t,n,s,r){this.replaceElement=function(o,a,p){p=p||{};var d=a.type,l=o.businessObject;if(isSubProcess(l)&&"bpmn:SubProcess"===d&&shouldToggleCollapsed(o,a))return n.toggleCollapse(o),o;var c=e.create(d),h={type:d,businessObject:c,di:{}};"bpmn:ExclusiveGateway"===d&&(h.di.isMarkerVisible=!0),copyProperties(o.di,h.di,["fill","stroke","background-color","border-color","color"]);var u=intersection(getPropertyNames(l.$descriptor),getPropertyNames(c.$descriptor,!0));assign(c,pick(a,CUSTOM_PROPERTIES));var f=filter(u,(function(e){return"eventDefinitions"===e?hasEventDefinition(o,a.eventDefinitionType):"loopCharacteristics"===e?!isEventSubProcess(c):!(has(c,e)||"processRef"===e&&!1===a.isExpanded||"triggeredByEvent"===e||"isForCompensation"===e&&isEventSubProcess(c))}));if(c=t.copyElement(l,c,f),a.eventDefinitionType&&(hasEventDefinition(c,a.eventDefinitionType)||(h.eventDefinitionType=a.eventDefinitionType,h.eventDefinitionAttrs=a.eventDefinitionAttrs)),is(l,"bpmn:Activity")){if(isSubProcess(l))h.isExpanded=isExpanded(o);else if(a&&has(a,"isExpanded")){h.isExpanded=a.isExpanded;var m=i.getDefaultSize(c,{isExpanded:h.isExpanded});h.width=m.width,h.height=m.height,h.x=o.x-(h.width-o.width)/2,h.y=o.y-(h.height-o.height)/2}isExpanded(o)&&!is(l,"bpmn:Task")&&h.isExpanded&&(h.width=o.width,h.height=o.height)}if(isSubProcess(l)&&!isSubProcess(c)&&(p.moveChildren=!1),is(l,"bpmn:Participant")){!0===a.isExpanded?c.processRef=e.create("bpmn:Process"):p.moveChildren=!1;var g=isHorizontal(o);getDi(o).isHorizontal||(getDi(h).isHorizontal=g),h.width=g?o.width:i.getDefaultSize(h).width,h.height=g?i.getDefaultSize(h).height:o.height}return r.allowed("shape.resize",{shape:c})||(h.height=i.getDefaultSize(h).height,h.width=i.getDefaultSize(h).width),c.name=l.name,isAny(l,["bpmn:ExclusiveGateway","bpmn:InclusiveGateway","bpmn:Activity"])&&isAny(c,["bpmn:ExclusiveGateway","bpmn:InclusiveGateway","bpmn:Activity"])&&(c.default=l.default),a.host&&!is(l,"bpmn:BoundaryEvent")&&is(c,"bpmn:BoundaryEvent")&&(h.host=a.host),"bpmn:DataStoreReference"!==h.type&&"bpmn:DataObjectReference"!==h.type||(h.x=o.x+(o.width-h.width)/2),s.replaceElement(o,h,{...p,targetElement:a})}}function isSubProcess(e){return is(e,"bpmn:SubProcess")}function hasEventDefinition(e,i){var t=getBusinessObject(e);return i&&t.get("eventDefinitions").some((function(e){return is(e,i)}))}function intersection(e,i){return e.filter((function(e){return i.includes(e)}))}BpmnReplace.$inject=["bpmnFactory","elementFactory","moddleCopy","modeling","replace","rules"];
+import {
+  pick,
+  assign,
+  filter,
+  forEach,
+  isArray,
+  isUndefined,
+  has
+} from 'min-dash';
+
+import {
+  is,
+  getDi,
+  getBusinessObject
+} from '../../util/ModelUtil';
+
+import {
+  isAny
+} from '../modeling/util/ModelingUtil';
+
+import {
+  isExpanded,
+  isEventSubProcess,
+  isHorizontal
+} from '../../util/DiUtil';
+
+import { getPropertyNames } from '../copy-paste/ModdleCopy';
+
+/**
+ * @typedef {import('../modeling/BpmnFactory').default} BpmnFactory
+ * @typedef {import('../modeling/ElementFactory').default} ElementFactory
+ * @typedef {import('../copy-paste/ModdleCopy').default} ModdleCopy
+ * @typedef {import('../modeling/Modeling').default} Modeling
+ * @typedef {import('diagram-js/lib/features/replace/Replace').default} Replace
+ * @typedef {import('diagram-js/lib/features/rules/Rules').default} Rules
+ *
+ * @typedef {import('../../model/Types').Element} Element
+ * @typedef {import('../../model/Types').Shape} Shape
+ * @typedef {import('../../model/Types').ModdleElement} ModdleElement
+ *
+ * @typedef { {
+ *   type: string;
+ *   cancelActivity: boolean;
+ *   instantiate: boolean;
+ *   eventGatewayType: string;
+ *   triggeredByEvent: boolean;
+ *   isInterrupting: boolean;
+ *   collapsed: boolean;
+ *   isExpanded: boolean;
+ *   eventDefinitionType: string;
+ *   eventDefinitionAttrs: Object;
+ *   host: Shape;
+ * } } TargetElement
+ *
+ * @typedef { {
+ *   moveChildren: boolean;
+ * } & Record<string, any> } Hints
+ */
+
+function copyProperties(source, target, properties) {
+  if (!isArray(properties)) {
+    properties = [ properties ];
+  }
+
+  forEach(properties, function(property) {
+    if (!isUndefined(source[property])) {
+      target[property] = source[property];
+    }
+  });
+}
+
+
+var CUSTOM_PROPERTIES = [
+  'cancelActivity',
+  'instantiate',
+  'eventGatewayType',
+  'triggeredByEvent',
+  'isInterrupting'
+];
+
+/**
+ * Check if element should be collapsed or expanded.
+ */
+function shouldToggleCollapsed(element, targetElement) {
+
+  var oldCollapsed = (
+    element && has(element, 'collapsed') ? element.collapsed : !isExpanded(element)
+  );
+
+  var targetCollapsed;
+
+  if (targetElement && (has(targetElement, 'collapsed') || has(targetElement, 'isExpanded'))) {
+
+    // property is explicitly set so use it
+    targetCollapsed = (
+      has(targetElement, 'collapsed') ? targetElement.collapsed : !targetElement.isExpanded
+    );
+  } else {
+
+    // keep old state
+    targetCollapsed = oldCollapsed;
+  }
+
+  if (oldCollapsed !== targetCollapsed) {
+    return true;
+  }
+
+  return false;
+}
+
+
+/**
+ * BPMN-specific replace.
+ *
+ * @param {BpmnFactory} bpmnFactory
+ * @param {ElementFactory} elementFactory
+ * @param {ModdleCopy} moddleCopy
+ * @param {Modeling} modeling
+ * @param {Replace} replace
+ * @param {Rules} rules
+ */
+export default function BpmnReplace(
+    bpmnFactory,
+    elementFactory,
+    moddleCopy,
+    modeling,
+    replace,
+    rules
+) {
+
+  /**
+   * Prepares a new business object for the replacement element
+   * and triggers the replace operation.
+   *
+   * @param  {Element} element
+   * @param  {TargetElement} targetElement
+   * @param  {Hints} [hints]
+   *
+   * @return {Element}
+   */
+  function replaceElement(element, targetElement, hints) {
+
+    hints = hints || {};
+
+    var type = targetElement.type,
+        oldBusinessObject = element.businessObject;
+
+    if (isSubProcess(oldBusinessObject) && type === 'bpmn:SubProcess') {
+      if (shouldToggleCollapsed(element, targetElement)) {
+
+        // expanding or collapsing process
+        modeling.toggleCollapse(element);
+
+        return element;
+      }
+    }
+
+    var newBusinessObject = bpmnFactory.create(type);
+
+    var newElement = {
+      type: type,
+      businessObject: newBusinessObject,
+    };
+
+    newElement.di = {};
+
+    if (type === 'bpmn:ExclusiveGateway') {
+      newElement.di.isMarkerVisible = true;
+    }
+
+    // colors will be set to DI
+    copyProperties(element.di, newElement.di, [
+      'fill',
+      'stroke',
+      'background-color',
+      'border-color',
+      'color'
+    ]);
+
+    var elementProps = getPropertyNames(oldBusinessObject.$descriptor),
+        newElementProps = getPropertyNames(newBusinessObject.$descriptor, true),
+        copyProps = intersection(elementProps, newElementProps);
+
+    // initialize special properties defined in target definition
+    assign(newBusinessObject, pick(targetElement, CUSTOM_PROPERTIES));
+
+    var properties = filter(copyProps, function(propertyName) {
+
+      // copying event definitions, unless we replace
+      if (propertyName === 'eventDefinitions') {
+        return hasEventDefinition(element, targetElement.eventDefinitionType);
+      }
+
+      // retain loop characteristics if the target element
+      // is not an event sub process
+      if (propertyName === 'loopCharacteristics') {
+        return !isEventSubProcess(newBusinessObject);
+      }
+
+      // so the applied properties from 'target' don't get lost
+      if (has(newBusinessObject, propertyName)) {
+        return false;
+      }
+
+      if (propertyName === 'processRef' && targetElement.isExpanded === false) {
+        return false;
+      }
+
+      if (propertyName === 'triggeredByEvent') {
+        return false;
+      }
+
+      if (propertyName === 'isForCompensation') {
+        return !isEventSubProcess(newBusinessObject);
+      }
+
+      return true;
+    });
+
+    newBusinessObject = moddleCopy.copyElement(
+      oldBusinessObject,
+      newBusinessObject,
+      properties
+    );
+
+    // initialize custom BPMN extensions
+    if (targetElement.eventDefinitionType) {
+
+      // only initialize with new eventDefinition
+      // if we did not set an event definition yet,
+      // i.e. because we copied it
+      if (!hasEventDefinition(newBusinessObject, targetElement.eventDefinitionType)) {
+        newElement.eventDefinitionType = targetElement.eventDefinitionType;
+        newElement.eventDefinitionAttrs = targetElement.eventDefinitionAttrs;
+      }
+    }
+
+    if (is(oldBusinessObject, 'bpmn:Activity')) {
+
+      if (isSubProcess(oldBusinessObject)) {
+
+        // no toggeling, so keep old state
+        newElement.isExpanded = isExpanded(element);
+      }
+
+      // else if property is explicitly set, use it
+      else if (targetElement && has(targetElement, 'isExpanded')) {
+        newElement.isExpanded = targetElement.isExpanded;
+
+        // assign default size of new expanded element
+        var defaultSize = elementFactory.getDefaultSize(newBusinessObject, {
+          isExpanded: newElement.isExpanded
+        });
+
+        newElement.width = defaultSize.width;
+        newElement.height = defaultSize.height;
+
+        // keep element centered
+        newElement.x = element.x - (newElement.width - element.width) / 2;
+        newElement.y = element.y - (newElement.height - element.height) / 2;
+      }
+
+      // TODO: need also to respect min/max Size
+      // copy size, from an expanded subprocess to an expanded alternative subprocess
+      // except bpmn:Task, because Task is always expanded
+      if ((isExpanded(element) && !is(oldBusinessObject, 'bpmn:Task')) && newElement.isExpanded) {
+        newElement.width = element.width;
+        newElement.height = element.height;
+      }
+    }
+
+    // remove children if not expanding sub process
+    if (isSubProcess(oldBusinessObject) && !isSubProcess(newBusinessObject)) {
+      hints.moveChildren = false;
+    }
+
+    // transform collapsed/expanded pools
+    if (is(oldBusinessObject, 'bpmn:Participant')) {
+
+      // create expanded pool
+      if (targetElement.isExpanded === true) {
+        newBusinessObject.processRef = bpmnFactory.create('bpmn:Process');
+      } else {
+
+        // remove children when transforming to collapsed pool
+        hints.moveChildren = false;
+      }
+
+      // apply same directionality
+      var isHorizontalPool = isHorizontal(element);
+      if (!getDi(element).isHorizontal) {
+        getDi(newElement).isHorizontal = isHorizontalPool;
+      }
+
+      // keep the existing size of the pool's direction to
+      // prevent dangling message flows
+      newElement.width = isHorizontalPool ? element.width : elementFactory.getDefaultSize(newElement).width;
+      newElement.height = isHorizontalPool ? elementFactory.getDefaultSize(newElement).height : element.height;
+    }
+
+    if (!rules.allowed('shape.resize', { shape: newBusinessObject })) {
+      newElement.height = elementFactory.getDefaultSize(newElement).height;
+      newElement.width = elementFactory.getDefaultSize(newElement).width;
+    }
+
+    newBusinessObject.name = oldBusinessObject.name;
+
+    // retain default flow's reference between inclusive <-> exclusive gateways and activities
+    if (
+      isAny(oldBusinessObject, [
+        'bpmn:ExclusiveGateway',
+        'bpmn:InclusiveGateway',
+        'bpmn:Activity'
+      ]) &&
+      isAny(newBusinessObject, [
+        'bpmn:ExclusiveGateway',
+        'bpmn:InclusiveGateway',
+        'bpmn:Activity'
+      ])
+    ) {
+      newBusinessObject.default = oldBusinessObject.default;
+    }
+
+    if (
+      targetElement.host &&
+      !is(oldBusinessObject, 'bpmn:BoundaryEvent') &&
+      is(newBusinessObject, 'bpmn:BoundaryEvent')
+    ) {
+      newElement.host = targetElement.host;
+    }
+
+    // The DataStoreReference element is 14px wider than the DataObjectReference element
+    // This ensures that they stay centered on the x axis when replaced
+    if (
+      newElement.type === 'bpmn:DataStoreReference' ||
+      newElement.type === 'bpmn:DataObjectReference'
+    ) {
+      newElement.x = element.x + (element.width - newElement.width) / 2;
+    }
+
+    return replace.replaceElement(element, newElement, { ...hints, targetElement });
+  }
+
+  this.replaceElement = replaceElement;
+}
+
+BpmnReplace.$inject = [
+  'bpmnFactory',
+  'elementFactory',
+  'moddleCopy',
+  'modeling',
+  'replace',
+  'rules'
+];
+
+/**
+ * @param {ModdleElement} businessObject
+ *
+ * @return {boolean}
+ */
+function isSubProcess(businessObject) {
+  return is(businessObject, 'bpmn:SubProcess');
+}
+
+/**
+ * @param {Element|ModdleElement} element
+ * @param {string} type
+ *
+ * @return {boolean}
+ */
+function hasEventDefinition(element, type) {
+  var businessObject = getBusinessObject(element);
+
+  return type && businessObject.get('eventDefinitions').some(function(definition) {
+    return is(definition, type);
+  });
+}
+
+/**
+ * Compute intersection between two arrays.
+ *
+ * @param {Array} a
+ * @param {Array} b
+ *
+ * @return {Array}
+ */
+function intersection(a, b) {
+  return a.filter(function(item) {
+    return b.includes(item);
+  });
+}

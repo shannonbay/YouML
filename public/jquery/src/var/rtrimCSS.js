@@ -1,1 +1,12 @@
-define(["./whitespace"],(function(e){"use strict";return new RegExp("^"+e+"+|((?:^|[^\\\\])(?:\\\\.)*)"+e+"+$","g")}));
+define( [
+	"./whitespace"
+], function( whitespace ) {
+
+"use strict";
+
+return new RegExp(
+	"^" + whitespace + "+|((?:^|[^\\\\])(?:\\\\.)*)" + whitespace + "+$",
+	"g"
+);
+
+} );

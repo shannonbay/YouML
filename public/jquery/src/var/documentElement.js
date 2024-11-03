@@ -1,1 +1,7 @@
-define(["./document"],(function(e){"use strict";return e.documentElement}));
+define( [
+	"./document"
+], function( document ) {
+	"use strict";
+
+	return document.documentElement;
+} );

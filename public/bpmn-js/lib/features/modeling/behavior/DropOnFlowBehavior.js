@@ -1,1 +1,221 @@
-import inherits from"inherits-browser";import{assign,filter,find,isNumber}from"min-dash";import{getMid}from"diagram-js/lib/layout/LayoutUtil";import CommandInterceptor from"diagram-js/lib/command/CommandInterceptor";import{getApproxIntersection}from"diagram-js/lib/util/LineIntersection";export default function DropOnFlowBehavior(e,t,n){function i(e,i,o){var r,a,s,c,p,l,m,u,d=i.waypoints,h=e.outgoing.slice(),g=e.incoming.slice();u=isNumber(o.width)?getMid(o):o;var f=getApproxIntersection(d,u);if(f){if(r=d.slice(0,f.index),a=d.slice(f.index+(f.bendpoint?1:0)),!r.length||!a.length)return;s=f.bendpoint?d[f.index]:u,1!==r.length&&isPointInsideBBox(e,r[r.length-1])||r.push(copy(s)),1!==a.length&&isPointInsideBBox(e,a[0])||a.unshift(copy(s))}c=i.source,p=i.target,t.canConnect(c,e,i)&&(n.reconnectEnd(i,e,r||u),l=i),t.canConnect(e,p,i)&&(l?m=n.connect(e,p,{type:i.type,waypoints:a}):(n.reconnectStart(i,e,a||u),m=i));var x=[].concat(l&&filter(g,(function(e){return e.source===l.source}))||[],m&&filter(h,(function(e){return e.target===m.target}))||[]);x.length&&n.removeElements(x)}CommandInterceptor.call(this,e),this.preExecute("elements.move",(function(e){var n=e.newParent,i=e.shapes,o=e.delta,r=i[0];if(r&&n){n&&n.waypoints&&(e.newParent=n=n.parent);var a=getMid(r),s={x:a.x+o.x,y:a.y+o.y},c=find(n.children,(function(e){return t.canInsert(i,e)&&getApproxIntersection(e.waypoints,s)}));c&&(e.targetFlow=c,e.position=s)}}),!0),this.postExecuted("elements.move",(function(e){var t=e.shapes,n=e.targetFlow,o=e.position;n&&i(t[0],n,o)}),!0),this.preExecute("shape.create",(function(e){var n=e.parent,i=e.shape;t.canInsert(i,n)&&(e.targetFlow=n,e.parent=n.parent)}),!0),this.postExecuted("shape.create",(function(e){var t=e.shape,n=e.targetFlow,o=e.position;n&&i(t,n,o)}),!0)}function isPointInsideBBox(e,t){var n=t.x,i=t.y;return n>=e.x&&n<=e.x+e.width&&i>=e.y&&i<=e.y+e.height}function copy(e){return assign({},e)}inherits(DropOnFlowBehavior,CommandInterceptor),DropOnFlowBehavior.$inject=["eventBus","bpmnRules","modeling"];
+import inherits from 'inherits-browser';
+
+import {
+  assign,
+  filter,
+  find,
+  isNumber
+} from 'min-dash';
+
+import { getMid } from 'diagram-js/lib/layout/LayoutUtil';
+
+import CommandInterceptor from 'diagram-js/lib/command/CommandInterceptor';
+
+import {
+  getApproxIntersection
+} from 'diagram-js/lib/util/LineIntersection';
+
+/**
+ * @typedef {import('diagram-js/lib/core/EventBus').default} EventBus
+ * @typedef {import('../../rules/BpmnRules').default} BpmnRules
+ * @typedef {import('../../modeling/Modeling').default} Modeling
+ */
+
+/**
+ * @param {EventBus} eventBus
+ * @param {BpmnRules} bpmnRules
+ * @param {Modeling} modeling
+ */
+export default function DropOnFlowBehavior(eventBus, bpmnRules, modeling) {
+
+  CommandInterceptor.call(this, eventBus);
+
+  /**
+   * Reconnect start / end of a connection after
+   * dropping an element on a flow.
+   */
+
+  function insertShape(shape, targetFlow, positionOrBounds) {
+    var waypoints = targetFlow.waypoints,
+        waypointsBefore,
+        waypointsAfter,
+        dockingPoint,
+        source,
+        target,
+        incomingConnection,
+        outgoingConnection,
+        oldOutgoing = shape.outgoing.slice(),
+        oldIncoming = shape.incoming.slice();
+
+    var mid;
+
+    if (isNumber(positionOrBounds.width)) {
+      mid = getMid(positionOrBounds);
+    } else {
+      mid = positionOrBounds;
+    }
+
+    var intersection = getApproxIntersection(waypoints, mid);
+
+    if (intersection) {
+      waypointsBefore = waypoints.slice(0, intersection.index);
+      waypointsAfter = waypoints.slice(intersection.index + (intersection.bendpoint ? 1 : 0));
+
+      // due to inaccuracy intersection might have been found
+      if (!waypointsBefore.length || !waypointsAfter.length) {
+        return;
+      }
+
+      dockingPoint = intersection.bendpoint ? waypoints[intersection.index] : mid;
+
+      // if last waypointBefore is inside shape's bounds, ignore docking point
+      if (waypointsBefore.length === 1 || !isPointInsideBBox(shape, waypointsBefore[waypointsBefore.length - 1])) {
+        waypointsBefore.push(copy(dockingPoint));
+      }
+
+      // if first waypointAfter is inside shape's bounds, ignore docking point
+      if (waypointsAfter.length === 1 || !isPointInsideBBox(shape, waypointsAfter[0])) {
+        waypointsAfter.unshift(copy(dockingPoint));
+      }
+    }
+
+    source = targetFlow.source;
+    target = targetFlow.target;
+
+    if (bpmnRules.canConnect(source, shape, targetFlow)) {
+
+      // reconnect source -> inserted shape
+      modeling.reconnectEnd(targetFlow, shape, waypointsBefore || mid);
+
+      incomingConnection = targetFlow;
+    }
+
+    if (bpmnRules.canConnect(shape, target, targetFlow)) {
+
+      if (!incomingConnection) {
+
+        // reconnect inserted shape -> end
+        modeling.reconnectStart(targetFlow, shape, waypointsAfter || mid);
+
+        outgoingConnection = targetFlow;
+      } else {
+        outgoingConnection = modeling.connect(
+          shape, target, { type: targetFlow.type, waypoints: waypointsAfter }
+        );
+      }
+    }
+
+    var duplicateConnections = [].concat(
+
+      incomingConnection && filter(oldIncoming, function(connection) {
+        return connection.source === incomingConnection.source;
+      }) || [],
+
+      outgoingConnection && filter(oldOutgoing, function(connection) {
+        return connection.target === outgoingConnection.target;
+      }) || []
+    );
+
+    if (duplicateConnections.length) {
+      modeling.removeElements(duplicateConnections);
+    }
+  }
+
+  this.preExecute('elements.move', function(context) {
+
+    var newParent = context.newParent,
+        shapes = context.shapes,
+        delta = context.delta,
+        shape = shapes[0];
+
+    if (!shape || !newParent) {
+      return;
+    }
+
+    // if the new parent is a connection,
+    // change it to the new parent's parent
+    if (newParent && newParent.waypoints) {
+      context.newParent = newParent = newParent.parent;
+    }
+
+    var shapeMid = getMid(shape);
+    var newShapeMid = {
+      x: shapeMid.x + delta.x,
+      y: shapeMid.y + delta.y
+    };
+
+    // find a connection which intersects with the
+    // element's mid point
+    var connection = find(newParent.children, function(element) {
+      var canInsert = bpmnRules.canInsert(shapes, element);
+
+      return canInsert && getApproxIntersection(element.waypoints, newShapeMid);
+    });
+
+    if (connection) {
+      context.targetFlow = connection;
+      context.position = newShapeMid;
+    }
+
+  }, true);
+
+  this.postExecuted('elements.move', function(context) {
+
+    var shapes = context.shapes,
+        targetFlow = context.targetFlow,
+        position = context.position;
+
+    if (targetFlow) {
+      insertShape(shapes[0], targetFlow, position);
+    }
+
+  }, true);
+
+  this.preExecute('shape.create', function(context) {
+
+    var parent = context.parent,
+        shape = context.shape;
+
+    if (bpmnRules.canInsert(shape, parent)) {
+      context.targetFlow = parent;
+      context.parent = parent.parent;
+    }
+  }, true);
+
+  this.postExecuted('shape.create', function(context) {
+
+    var shape = context.shape,
+        targetFlow = context.targetFlow,
+        positionOrBounds = context.position;
+
+    if (targetFlow) {
+      insertShape(shape, targetFlow, positionOrBounds);
+    }
+  }, true);
+}
+
+inherits(DropOnFlowBehavior, CommandInterceptor);
+
+DropOnFlowBehavior.$inject = [
+  'eventBus',
+  'bpmnRules',
+  'modeling'
+];
+
+
+// helpers /////////////////////
+
+function isPointInsideBBox(bbox, point) {
+  var x = point.x,
+      y = point.y;
+
+  return x >= bbox.x &&
+    x <= bbox.x + bbox.width &&
+    y >= bbox.y &&
+    y <= bbox.y + bbox.height;
+}
+
+function copy(obj) {
+  return assign({}, obj);
+}
+

@@ -41,38 +41,72 @@ function extractCodeBlock(response) {
   }
 }
 
-// Endpoint to generate PlantUML diagram
+const fs = require('fs');
+
 app.post('/generate-uml', async (req, res) => {
   try {
-    const { prompt } = req.body;
+    const { prompt, isUpdate } = req.body;
 
-    console.log("Greetings from generate-uml");
+    // Define the path to the file
+    const filePath = path.join(__dirname, 'resources', 'plantUML-keywords.txt');
+    let data;
+    try {
+      data = fs.readFileSync(filePath, 'utf8');
+      console.log('File contents:', data);
+    } catch (err) {
+      console.error('Error reading file:', err);
+    }
+
+    // Determine the prompt based on whether it's an update
+    let finalPrompt = prompt;
+    let keywords = `Valid PlantUML keywords: \n\`\`\`ascii\n${data}\n\`\`\`\n`;
+    if (isUpdate && lastPlantUmlCode) {
+      finalPrompt = `${keywords}Here is the existing PlantUML diagram:\n\`\`\`plantuml\n${lastPlantUmlCode}\n\`\`\`\nPlease make the following changes, ensuring no syntax errors: ${prompt}`;
+    } else {
+      finalPrompt = `${keywords}Generate a valid PlantUML diagram for: ${prompt}. It should be free from syntax errors.`;
+    }
+
+    console.log('Final prompt:', finalPrompt);
+
     // Create a chat completion
     const openaiResponse = await openai.chat.completions.create({
       model: 'gpt-4o-2024-08-06',
-      messages: [{ role: 'user', content: `Generate a PlantUML diagram for: ${prompt}` }],
+      messages: [{ role: 'user', content: finalPrompt }],
       max_tokens: 1500,
     });
 
     const { language, code: plantUmlCode } = extractCodeBlock(openaiResponse.choices[0].message.content.trim());
-    
+
     console.log(plantUmlCode);
 
-    // Step 2: Encode the PlantUML code
+    if (plantUmlCode) {
+      // Update the last diagram
+      lastPlantUmlCode = plantUmlCode;
 
-    //var encodedPlantUml = plantumlEncoder.encode('A -> B: Hello')
-    var encodedPlantUml = plantumlEncoder.encode(plantUmlCode)
+      // Step 2: Encode the PlantUML code
+      const encodedPlantUml = plantumlEncoder.encode(plantUmlCode);
 
+      try {
+        // Step 3: Request the SVG from the PlantUML server
+        const plantUmlSvgUrl = `http://www.plantuml.com/plantuml/svg/${encodedPlantUml}`;
+        const plantUmlResponse = await axios.get(plantUmlSvgUrl, { responseType: 'arraybuffer' });
 
-    console.log(encodedPlantUml);
-    // Step 3: Request the SVG from the PlantUML server
-    const plantUmlSvgUrl = `http://www.plantuml.com/plantuml/svg/${encodedPlantUml}`;
-    const plantUmlResponse = await axios.get(plantUmlSvgUrl, { responseType: 'arraybuffer' });
- 
-    // Step 4: Send the SVG response back to the client
-    res.set('Content-Type', 'image/svg+xml');
-    res.send(plantUmlResponse.data);
-    
+        // Step 4: Send both the SVG and encoded PlantUML back to the client
+        res.json({
+          svgData: Buffer.from(plantUmlResponse.data, 'binary').toString('utf8'),
+          encodedDiagram: encodedPlantUml
+        });
+      } catch (error) {
+        console.error('Error generating SVG from PlantUML:', error);
+        // Return only the encoded diagram if SVG generation fails
+        res.json({
+          svgData: null,
+          encodedDiagram: encodedPlantUml
+        });
+      }
+    } else {
+      res.status(400).send('No valid PlantUML code found in response');
+    }
   } catch (error) {
     if (error instanceof OpenAI.APIError) {
       console.error(error.status);  // e.g. 401
@@ -86,7 +120,6 @@ app.post('/generate-uml', async (req, res) => {
     res.status(500).send('Error generating UML diagram');
   }
 });
-
 
 app.use(express.static(path.join(__dirname, 'public')));
 

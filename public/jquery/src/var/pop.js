@@ -1,1 +1,9 @@
-define(["./arr"],(function(r){"use strict";return r.pop}));
+define( [
+	"./arr"
+], function( arr ) {
+
+"use strict";
+
+return arr.pop;
+
+} );

@@ -1,1 +1,35 @@
-define(["../core"],(function(r){"use strict";return r.parseXML=function(e){var n,t;if(!e||"string"!=typeof e)return null;try{n=(new window.DOMParser).parseFromString(e,"text/xml")}catch(r){}return t=n&&n.getElementsByTagName("parsererror")[0],n&&!t||r.error("Invalid XML: "+(t?r.map(t.childNodes,(function(r){return r.textContent})).join("\n"):e)),n},r.parseXML}));
+define( [
+	"../core"
+], function( jQuery ) {
+
+"use strict";
+
+// Cross-browser xml parsing
+jQuery.parseXML = function( data ) {
+	var xml, parserErrorElem;
+	if ( !data || typeof data !== "string" ) {
+		return null;
+	}
+
+	// Support: IE 9 - 11 only
+	// IE throws on parseFromString with invalid input.
+	try {
+		xml = ( new window.DOMParser() ).parseFromString( data, "text/xml" );
+	} catch ( e ) {}
+
+	parserErrorElem = xml && xml.getElementsByTagName( "parsererror" )[ 0 ];
+	if ( !xml || parserErrorElem ) {
+		jQuery.error( "Invalid XML: " + (
+			parserErrorElem ?
+				jQuery.map( parserErrorElem.childNodes, function( el ) {
+					return el.textContent;
+				} ).join( "\n" ) :
+				data
+		) );
+	}
+	return xml;
+};
+
+return jQuery.parseXML;
+
+} );

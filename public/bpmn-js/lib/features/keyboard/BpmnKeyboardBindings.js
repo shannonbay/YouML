@@ -1,1 +1,180 @@
-import inherits from"inherits-browser";import KeyboardBindings from"diagram-js/lib/features/keyboard/KeyboardBindings";export default function BpmnKeyboardBindings(i){i.invoke(KeyboardBindings,this)}inherits(BpmnKeyboardBindings,KeyboardBindings),BpmnKeyboardBindings.$inject=["injector"],BpmnKeyboardBindings.prototype.registerBindings=function(i,e){function n(n,r){e.isRegistered(n)&&i.addListener(r)}KeyboardBindings.prototype.registerBindings.call(this,i,e),n("selectElements",(function(n){var r=n.keyEvent;if(i.isKey(["a","A"],r)&&i.isCmd(r))return e.trigger("selectElements"),!0})),n("find",(function(n){var r=n.keyEvent;if(i.isKey(["f","F"],r)&&i.isCmd(r))return e.trigger("find"),!0})),n("spaceTool",(function(n){var r=n.keyEvent;if(!i.hasModifier(r))return i.isKey(["s","S"],r)?(e.trigger("spaceTool"),!0):void 0})),n("lassoTool",(function(n){var r=n.keyEvent;if(!i.hasModifier(r))return i.isKey(["l","L"],r)?(e.trigger("lassoTool"),!0):void 0})),n("handTool",(function(n){var r=n.keyEvent;if(!i.hasModifier(r))return i.isKey(["h","H"],r)?(e.trigger("handTool"),!0):void 0})),n("globalConnectTool",(function(n){var r=n.keyEvent;if(!i.hasModifier(r))return i.isKey(["c","C"],r)?(e.trigger("globalConnectTool"),!0):void 0})),n("directEditing",(function(n){var r=n.keyEvent;if(!i.hasModifier(r))return i.isKey(["e","E"],r)?(e.trigger("directEditing"),!0):void 0})),n("replaceElement",(function(n){var r=n.keyEvent;if(!i.hasModifier(r))return i.isKey(["r","R"],r)?(e.trigger("replaceElement",r),!0):void 0}))};
+import inherits from 'inherits-browser';
+
+import KeyboardBindings from 'diagram-js/lib/features/keyboard/KeyboardBindings';
+
+/**
+ * @typedef {import('didi').Injector} Injector
+ * @typedef {import('diagram-js/lib/features/editor-actions/EditorActions').default} EditorActions
+ * @typedef {import('diagram-js/lib/features/keyboard/Keyboard').default} Keyboard
+ */
+
+/**
+ * BPMN 2.0 specific keyboard bindings.
+ *
+ * @param {Injector} injector
+ */
+export default function BpmnKeyboardBindings(injector) {
+  injector.invoke(KeyboardBindings, this);
+}
+
+inherits(BpmnKeyboardBindings, KeyboardBindings);
+
+BpmnKeyboardBindings.$inject = [
+  'injector'
+];
+
+
+/**
+ * Register available keyboard bindings.
+ *
+ * @param {Keyboard} keyboard
+ * @param {EditorActions} editorActions
+ */
+BpmnKeyboardBindings.prototype.registerBindings = function(keyboard, editorActions) {
+
+  // inherit default bindings
+  KeyboardBindings.prototype.registerBindings.call(this, keyboard, editorActions);
+
+  /**
+   * Add keyboard binding if respective editor action
+   * is registered.
+   *
+   * @param {string} action name
+   * @param {Function} fn that implements the key binding
+   */
+  function addListener(action, fn) {
+
+    if (editorActions.isRegistered(action)) {
+      keyboard.addListener(fn);
+    }
+  }
+
+  // select all elements
+  // CTRL + A
+  addListener('selectElements', function(context) {
+
+    var event = context.keyEvent;
+
+    if (keyboard.isKey([ 'a', 'A' ], event) && keyboard.isCmd(event)) {
+      editorActions.trigger('selectElements');
+
+      return true;
+    }
+  });
+
+  // search labels
+  // CTRL + F
+  addListener('find', function(context) {
+
+    var event = context.keyEvent;
+
+    if (keyboard.isKey([ 'f', 'F' ], event) && keyboard.isCmd(event)) {
+      editorActions.trigger('find');
+
+      return true;
+    }
+  });
+
+  // activate space tool
+  // S
+  addListener('spaceTool', function(context) {
+
+    var event = context.keyEvent;
+
+    if (keyboard.hasModifier(event)) {
+      return;
+    }
+
+    if (keyboard.isKey([ 's', 'S' ], event)) {
+      editorActions.trigger('spaceTool');
+
+      return true;
+    }
+  });
+
+  // activate lasso tool
+  // L
+  addListener('lassoTool', function(context) {
+
+    var event = context.keyEvent;
+
+    if (keyboard.hasModifier(event)) {
+      return;
+    }
+
+    if (keyboard.isKey([ 'l', 'L' ], event)) {
+      editorActions.trigger('lassoTool');
+
+      return true;
+    }
+  });
+
+  // activate hand tool
+  // H
+  addListener('handTool', function(context) {
+
+    var event = context.keyEvent;
+
+    if (keyboard.hasModifier(event)) {
+      return;
+    }
+
+    if (keyboard.isKey([ 'h', 'H' ], event)) {
+      editorActions.trigger('handTool');
+
+      return true;
+    }
+  });
+
+  // activate global connect tool
+  // C
+  addListener('globalConnectTool', function(context) {
+
+    var event = context.keyEvent;
+
+    if (keyboard.hasModifier(event)) {
+      return;
+    }
+
+    if (keyboard.isKey([ 'c', 'C' ], event)) {
+      editorActions.trigger('globalConnectTool');
+
+      return true;
+    }
+  });
+
+  // activate direct editing
+  // E
+  addListener('directEditing', function(context) {
+
+    var event = context.keyEvent;
+
+    if (keyboard.hasModifier(event)) {
+      return;
+    }
+
+    if (keyboard.isKey([ 'e', 'E' ], event)) {
+      editorActions.trigger('directEditing');
+
+      return true;
+    }
+  });
+
+  // activate replace element
+  // R
+  addListener('replaceElement', function(context) {
+
+    var event = context.keyEvent;
+
+    if (keyboard.hasModifier(event)) {
+      return;
+    }
+
+    if (keyboard.isKey([ 'r', 'R' ], event)) {
+      editorActions.trigger('replaceElement', event);
+
+      return true;
+    }
+  });
+
+};

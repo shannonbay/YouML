@@ -1,1 +1,702 @@
-define(["./core","./core/camelCase","./var/document","./var/isFunction","./var/rcssNum","./var/rnothtmlwhite","./css/var/cssExpand","./css/var/isHiddenWithinTree","./css/adjustCSS","./data/var/dataPriv","./css/showHide","./core/init","./queue","./deferred","./traversing","./manipulation","./css","./effects/Tween"],(function(e,t,n,i,o,s,r,u,a,f,l){"use strict";var d,c,p=/^(?:toggle|show|hide)$/,h=/queueHooks$/;function w(){c&&(!1===n.hidden&&window.requestAnimationFrame?window.requestAnimationFrame(w):window.setTimeout(w,e.fx.interval),e.fx.tick())}function m(){return window.setTimeout((function(){d=void 0})),d=Date.now()}function v(e,t){var n,i=0,o={height:e};for(t=t?1:0;i<4;i+=2-t)o["margin"+(n=r[i])]=o["padding"+n]=e;return t&&(o.opacity=o.width=e),o}function g(e,t,n){for(var i,o=(y.tweeners[t]||[]).concat(y.tweeners["*"]),s=0,r=o.length;s<r;s++)if(i=o[s].call(n,t,e))return i}function y(n,o,s){var r,u,a=0,f=y.prefilters.length,l=e.Deferred().always((function(){delete c.elem})),c=function(){if(u)return!1;for(var e=d||m(),t=Math.max(0,p.startTime+p.duration-e),i=1-(t/p.duration||0),o=0,s=p.tweens.length;o<s;o++)p.tweens[o].run(i);return l.notifyWith(n,[p,i,t]),i<1&&s?t:(s||l.notifyWith(n,[p,1,0]),l.resolveWith(n,[p]),!1)},p=l.promise({elem:n,props:e.extend({},o),opts:e.extend(!0,{specialEasing:{},easing:e.easing._default},s),originalProperties:o,originalOptions:s,startTime:d||m(),duration:s.duration,tweens:[],createTween:function(t,i){var o=e.Tween(n,p.opts,t,i,p.opts.specialEasing[t]||p.opts.easing);return p.tweens.push(o),o},stop:function(e){var t=0,i=e?p.tweens.length:0;if(u)return this;for(u=!0;t<i;t++)p.tweens[t].run(1);return e?(l.notifyWith(n,[p,1,0]),l.resolveWith(n,[p,e])):l.rejectWith(n,[p,e]),this}}),h=p.props;for(function(n,i){var o,s,r,u,a;for(o in n)if(r=i[s=t(o)],u=n[o],Array.isArray(u)&&(r=u[1],u=n[o]=u[0]),o!==s&&(n[s]=u,delete n[o]),(a=e.cssHooks[s])&&"expand"in a)for(o in u=a.expand(u),delete n[s],u)o in n||(n[o]=u[o],i[o]=r);else i[s]=r}(h,p.opts.specialEasing);a<f;a++)if(r=y.prefilters[a].call(p,n,h,p.opts))return i(r.stop)&&(e._queueHooks(p.elem,p.opts.queue).stop=r.stop.bind(r)),r;return e.map(h,g,p),i(p.opts.start)&&p.opts.start.call(n,p),p.progress(p.opts.progress).done(p.opts.done,p.opts.complete).fail(p.opts.fail).always(p.opts.always),e.fx.timer(e.extend(c,{elem:n,anim:p,queue:p.opts.queue})),p}return e.Animation=e.extend(y,{tweeners:{"*":[function(e,t){var n=this.createTween(e,t);return a(n.elem,e,o.exec(t),n),n}]},tweener:function(e,t){i(e)?(t=e,e=["*"]):e=e.match(s);for(var n,o=0,r=e.length;o<r;o++)n=e[o],y.tweeners[n]=y.tweeners[n]||[],y.tweeners[n].unshift(t)},prefilters:[function(t,n,i){var o,s,r,a,d,c,h,w,m="width"in n||"height"in n,v=this,y={},x=t.style,q=t.nodeType&&u(t),T=f.get(t,"fxshow");for(o in i.queue||(null==(a=e._queueHooks(t,"fx")).unqueued&&(a.unqueued=0,d=a.empty.fire,a.empty.fire=function(){a.unqueued||d()}),a.unqueued++,v.always((function(){v.always((function(){a.unqueued--,e.queue(t,"fx").length||a.empty.fire()}))}))),n)if(s=n[o],p.test(s)){if(delete n[o],r=r||"toggle"===s,s===(q?"hide":"show")){if("show"!==s||!T||void 0===T[o])continue;q=!0}y[o]=T&&T[o]||e.style(t,o)}if((c=!e.isEmptyObject(n))||!e.isEmptyObject(y))for(o in m&&1===t.nodeType&&(i.overflow=[x.overflow,x.overflowX,x.overflowY],null==(h=T&&T.display)&&(h=f.get(t,"display")),"none"===(w=e.css(t,"display"))&&(h?w=h:(l([t],!0),h=t.style.display||h,w=e.css(t,"display"),l([t]))),("inline"===w||"inline-block"===w&&null!=h)&&"none"===e.css(t,"float")&&(c||(v.done((function(){x.display=h})),null==h&&(w=x.display,h="none"===w?"":w)),x.display="inline-block")),i.overflow&&(x.overflow="hidden",v.always((function(){x.overflow=i.overflow[0],x.overflowX=i.overflow[1],x.overflowY=i.overflow[2]}))),c=!1,y)c||(T?"hidden"in T&&(q=T.hidden):T=f.access(t,"fxshow",{display:h}),r&&(T.hidden=!q),q&&l([t],!0),v.done((function(){for(o in q||l([t]),f.remove(t,"fxshow"),y)e.style(t,o,y[o])}))),c=g(q?T[o]:0,o,v),o in T||(T[o]=c.start,q&&(c.end=c.start,c.start=0))}],prefilter:function(e,t){t?y.prefilters.unshift(e):y.prefilters.push(e)}}),e.speed=function(t,n,o){var s=t&&"object"==typeof t?e.extend({},t):{complete:o||!o&&n||i(t)&&t,duration:t,easing:o&&n||n&&!i(n)&&n};return e.fx.off?s.duration=0:"number"!=typeof s.duration&&(s.duration in e.fx.speeds?s.duration=e.fx.speeds[s.duration]:s.duration=e.fx.speeds._default),null!=s.queue&&!0!==s.queue||(s.queue="fx"),s.old=s.complete,s.complete=function(){i(s.old)&&s.old.call(this),s.queue&&e.dequeue(this,s.queue)},s},e.fn.extend({fadeTo:function(e,t,n,i){return this.filter(u).css("opacity",0).show().end().animate({opacity:t},e,n,i)},animate:function(t,n,i,o){var s=e.isEmptyObject(t),r=e.speed(n,i,o),u=function(){var n=y(this,e.extend({},t),r);(s||f.get(this,"finish"))&&n.stop(!0)};return u.finish=u,s||!1===r.queue?this.each(u):this.queue(r.queue,u)},stop:function(t,n,i){var o=function(e){var t=e.stop;delete e.stop,t(i)};return"string"!=typeof t&&(i=n,n=t,t=void 0),n&&this.queue(t||"fx",[]),this.each((function(){var n=!0,s=null!=t&&t+"queueHooks",r=e.timers,u=f.get(this);if(s)u[s]&&u[s].stop&&o(u[s]);else for(s in u)u[s]&&u[s].stop&&h.test(s)&&o(u[s]);for(s=r.length;s--;)r[s].elem!==this||null!=t&&r[s].queue!==t||(r[s].anim.stop(i),n=!1,r.splice(s,1));!n&&i||e.dequeue(this,t)}))},finish:function(t){return!1!==t&&(t=t||"fx"),this.each((function(){var n,i=f.get(this),o=i[t+"queue"],s=i[t+"queueHooks"],r=e.timers,u=o?o.length:0;for(i.finish=!0,e.queue(this,t,[]),s&&s.stop&&s.stop.call(this,!0),n=r.length;n--;)r[n].elem===this&&r[n].queue===t&&(r[n].anim.stop(!0),r.splice(n,1));for(n=0;n<u;n++)o[n]&&o[n].finish&&o[n].finish.call(this);delete i.finish}))}}),e.each(["toggle","show","hide"],(function(t,n){var i=e.fn[n];e.fn[n]=function(e,t,o){return null==e||"boolean"==typeof e?i.apply(this,arguments):this.animate(v(n,!0),e,t,o)}})),e.each({slideDown:v("show"),slideUp:v("hide"),slideToggle:v("toggle"),fadeIn:{opacity:"show"},fadeOut:{opacity:"hide"},fadeToggle:{opacity:"toggle"}},(function(t,n){e.fn[t]=function(e,t,i){return this.animate(n,e,t,i)}})),e.timers=[],e.fx.tick=function(){var t,n=0,i=e.timers;for(d=Date.now();n<i.length;n++)(t=i[n])()||i[n]!==t||i.splice(n--,1);i.length||e.fx.stop(),d=void 0},e.fx.timer=function(t){e.timers.push(t),e.fx.start()},e.fx.interval=13,e.fx.start=function(){c||(c=!0,w())},e.fx.stop=function(){c=null},e.fx.speeds={slow:600,fast:200,_default:400},e}));
+define( [
+	"./core",
+	"./core/camelCase",
+	"./var/document",
+	"./var/isFunction",
+	"./var/rcssNum",
+	"./var/rnothtmlwhite",
+	"./css/var/cssExpand",
+	"./css/var/isHiddenWithinTree",
+	"./css/adjustCSS",
+	"./data/var/dataPriv",
+	"./css/showHide",
+
+	"./core/init",
+	"./queue",
+	"./deferred",
+	"./traversing",
+	"./manipulation",
+	"./css",
+	"./effects/Tween"
+], function( jQuery, camelCase, document, isFunction, rcssNum, rnothtmlwhite, cssExpand,
+	isHiddenWithinTree, adjustCSS, dataPriv, showHide ) {
+
+"use strict";
+
+var
+	fxNow, inProgress,
+	rfxtypes = /^(?:toggle|show|hide)$/,
+	rrun = /queueHooks$/;
+
+function schedule() {
+	if ( inProgress ) {
+		if ( document.hidden === false && window.requestAnimationFrame ) {
+			window.requestAnimationFrame( schedule );
+		} else {
+			window.setTimeout( schedule, jQuery.fx.interval );
+		}
+
+		jQuery.fx.tick();
+	}
+}
+
+// Animations created synchronously will run synchronously
+function createFxNow() {
+	window.setTimeout( function() {
+		fxNow = undefined;
+	} );
+	return ( fxNow = Date.now() );
+}
+
+// Generate parameters to create a standard animation
+function genFx( type, includeWidth ) {
+	var which,
+		i = 0,
+		attrs = { height: type };
+
+	// If we include width, step value is 1 to do all cssExpand values,
+	// otherwise step value is 2 to skip over Left and Right
+	includeWidth = includeWidth ? 1 : 0;
+	for ( ; i < 4; i += 2 - includeWidth ) {
+		which = cssExpand[ i ];
+		attrs[ "margin" + which ] = attrs[ "padding" + which ] = type;
+	}
+
+	if ( includeWidth ) {
+		attrs.opacity = attrs.width = type;
+	}
+
+	return attrs;
+}
+
+function createTween( value, prop, animation ) {
+	var tween,
+		collection = ( Animation.tweeners[ prop ] || [] ).concat( Animation.tweeners[ "*" ] ),
+		index = 0,
+		length = collection.length;
+	for ( ; index < length; index++ ) {
+		if ( ( tween = collection[ index ].call( animation, prop, value ) ) ) {
+
+			// We're done with this property
+			return tween;
+		}
+	}
+}
+
+function defaultPrefilter( elem, props, opts ) {
+	var prop, value, toggle, hooks, oldfire, propTween, restoreDisplay, display,
+		isBox = "width" in props || "height" in props,
+		anim = this,
+		orig = {},
+		style = elem.style,
+		hidden = elem.nodeType && isHiddenWithinTree( elem ),
+		dataShow = dataPriv.get( elem, "fxshow" );
+
+	// Queue-skipping animations hijack the fx hooks
+	if ( !opts.queue ) {
+		hooks = jQuery._queueHooks( elem, "fx" );
+		if ( hooks.unqueued == null ) {
+			hooks.unqueued = 0;
+			oldfire = hooks.empty.fire;
+			hooks.empty.fire = function() {
+				if ( !hooks.unqueued ) {
+					oldfire();
+				}
+			};
+		}
+		hooks.unqueued++;
+
+		anim.always( function() {
+
+			// Ensure the complete handler is called before this completes
+			anim.always( function() {
+				hooks.unqueued--;
+				if ( !jQuery.queue( elem, "fx" ).length ) {
+					hooks.empty.fire();
+				}
+			} );
+		} );
+	}
+
+	// Detect show/hide animations
+	for ( prop in props ) {
+		value = props[ prop ];
+		if ( rfxtypes.test( value ) ) {
+			delete props[ prop ];
+			toggle = toggle || value === "toggle";
+			if ( value === ( hidden ? "hide" : "show" ) ) {
+
+				// Pretend to be hidden if this is a "show" and
+				// there is still data from a stopped show/hide
+				if ( value === "show" && dataShow && dataShow[ prop ] !== undefined ) {
+					hidden = true;
+
+				// Ignore all other no-op show/hide data
+				} else {
+					continue;
+				}
+			}
+			orig[ prop ] = dataShow && dataShow[ prop ] || jQuery.style( elem, prop );
+		}
+	}
+
+	// Bail out if this is a no-op like .hide().hide()
+	propTween = !jQuery.isEmptyObject( props );
+	if ( !propTween && jQuery.isEmptyObject( orig ) ) {
+		return;
+	}
+
+	// Restrict "overflow" and "display" styles during box animations
+	if ( isBox && elem.nodeType === 1 ) {
+
+		// Support: IE <=9 - 11, Edge 12 - 15
+		// Record all 3 overflow attributes because IE does not infer the shorthand
+		// from identically-valued overflowX and overflowY and Edge just mirrors
+		// the overflowX value there.
+		opts.overflow = [ style.overflow, style.overflowX, style.overflowY ];
+
+		// Identify a display type, preferring old show/hide data over the CSS cascade
+		restoreDisplay = dataShow && dataShow.display;
+		if ( restoreDisplay == null ) {
+			restoreDisplay = dataPriv.get( elem, "display" );
+		}
+		display = jQuery.css( elem, "display" );
+		if ( display === "none" ) {
+			if ( restoreDisplay ) {
+				display = restoreDisplay;
+			} else {
+
+				// Get nonempty value(s) by temporarily forcing visibility
+				showHide( [ elem ], true );
+				restoreDisplay = elem.style.display || restoreDisplay;
+				display = jQuery.css( elem, "display" );
+				showHide( [ elem ] );
+			}
+		}
+
+		// Animate inline elements as inline-block
+		if ( display === "inline" || display === "inline-block" && restoreDisplay != null ) {
+			if ( jQuery.css( elem, "float" ) === "none" ) {
+
+				// Restore the original display value at the end of pure show/hide animations
+				if ( !propTween ) {
+					anim.done( function() {
+						style.display = restoreDisplay;
+					} );
+					if ( restoreDisplay == null ) {
+						display = style.display;
+						restoreDisplay = display === "none" ? "" : display;
+					}
+				}
+				style.display = "inline-block";
+			}
+		}
+	}
+
+	if ( opts.overflow ) {
+		style.overflow = "hidden";
+		anim.always( function() {
+			style.overflow = opts.overflow[ 0 ];
+			style.overflowX = opts.overflow[ 1 ];
+			style.overflowY = opts.overflow[ 2 ];
+		} );
+	}
+
+	// Implement show/hide animations
+	propTween = false;
+	for ( prop in orig ) {
+
+		// General show/hide setup for this element animation
+		if ( !propTween ) {
+			if ( dataShow ) {
+				if ( "hidden" in dataShow ) {
+					hidden = dataShow.hidden;
+				}
+			} else {
+				dataShow = dataPriv.access( elem, "fxshow", { display: restoreDisplay } );
+			}
+
+			// Store hidden/visible for toggle so `.stop().toggle()` "reverses"
+			if ( toggle ) {
+				dataShow.hidden = !hidden;
+			}
+
+			// Show elements before animating them
+			if ( hidden ) {
+				showHide( [ elem ], true );
+			}
+
+			/* eslint-disable no-loop-func */
+
+			anim.done( function() {
+
+				/* eslint-enable no-loop-func */
+
+				// The final step of a "hide" animation is actually hiding the element
+				if ( !hidden ) {
+					showHide( [ elem ] );
+				}
+				dataPriv.remove( elem, "fxshow" );
+				for ( prop in orig ) {
+					jQuery.style( elem, prop, orig[ prop ] );
+				}
+			} );
+		}
+
+		// Per-property setup
+		propTween = createTween( hidden ? dataShow[ prop ] : 0, prop, anim );
+		if ( !( prop in dataShow ) ) {
+			dataShow[ prop ] = propTween.start;
+			if ( hidden ) {
+				propTween.end = propTween.start;
+				propTween.start = 0;
+			}
+		}
+	}
+}
+
+function propFilter( props, specialEasing ) {
+	var index, name, easing, value, hooks;
+
+	// camelCase, specialEasing and expand cssHook pass
+	for ( index in props ) {
+		name = camelCase( index );
+		easing = specialEasing[ name ];
+		value = props[ index ];
+		if ( Array.isArray( value ) ) {
+			easing = value[ 1 ];
+			value = props[ index ] = value[ 0 ];
+		}
+
+		if ( index !== name ) {
+			props[ name ] = value;
+			delete props[ index ];
+		}
+
+		hooks = jQuery.cssHooks[ name ];
+		if ( hooks && "expand" in hooks ) {
+			value = hooks.expand( value );
+			delete props[ name ];
+
+			// Not quite $.extend, this won't overwrite existing keys.
+			// Reusing 'index' because we have the correct "name"
+			for ( index in value ) {
+				if ( !( index in props ) ) {
+					props[ index ] = value[ index ];
+					specialEasing[ index ] = easing;
+				}
+			}
+		} else {
+			specialEasing[ name ] = easing;
+		}
+	}
+}
+
+function Animation( elem, properties, options ) {
+	var result,
+		stopped,
+		index = 0,
+		length = Animation.prefilters.length,
+		deferred = jQuery.Deferred().always( function() {
+
+			// Don't match elem in the :animated selector
+			delete tick.elem;
+		} ),
+		tick = function() {
+			if ( stopped ) {
+				return false;
+			}
+			var currentTime = fxNow || createFxNow(),
+				remaining = Math.max( 0, animation.startTime + animation.duration - currentTime ),
+
+				// Support: Android 2.3 only
+				// Archaic crash bug won't allow us to use `1 - ( 0.5 || 0 )` (trac-12497)
+				temp = remaining / animation.duration || 0,
+				percent = 1 - temp,
+				index = 0,
+				length = animation.tweens.length;
+
+			for ( ; index < length; index++ ) {
+				animation.tweens[ index ].run( percent );
+			}
+
+			deferred.notifyWith( elem, [ animation, percent, remaining ] );
+
+			// If there's more to do, yield
+			if ( percent < 1 && length ) {
+				return remaining;
+			}
+
+			// If this was an empty animation, synthesize a final progress notification
+			if ( !length ) {
+				deferred.notifyWith( elem, [ animation, 1, 0 ] );
+			}
+
+			// Resolve the animation and report its conclusion
+			deferred.resolveWith( elem, [ animation ] );
+			return false;
+		},
+		animation = deferred.promise( {
+			elem: elem,
+			props: jQuery.extend( {}, properties ),
+			opts: jQuery.extend( true, {
+				specialEasing: {},
+				easing: jQuery.easing._default
+			}, options ),
+			originalProperties: properties,
+			originalOptions: options,
+			startTime: fxNow || createFxNow(),
+			duration: options.duration,
+			tweens: [],
+			createTween: function( prop, end ) {
+				var tween = jQuery.Tween( elem, animation.opts, prop, end,
+					animation.opts.specialEasing[ prop ] || animation.opts.easing );
+				animation.tweens.push( tween );
+				return tween;
+			},
+			stop: function( gotoEnd ) {
+				var index = 0,
+
+					// If we are going to the end, we want to run all the tweens
+					// otherwise we skip this part
+					length = gotoEnd ? animation.tweens.length : 0;
+				if ( stopped ) {
+					return this;
+				}
+				stopped = true;
+				for ( ; index < length; index++ ) {
+					animation.tweens[ index ].run( 1 );
+				}
+
+				// Resolve when we played the last frame; otherwise, reject
+				if ( gotoEnd ) {
+					deferred.notifyWith( elem, [ animation, 1, 0 ] );
+					deferred.resolveWith( elem, [ animation, gotoEnd ] );
+				} else {
+					deferred.rejectWith( elem, [ animation, gotoEnd ] );
+				}
+				return this;
+			}
+		} ),
+		props = animation.props;
+
+	propFilter( props, animation.opts.specialEasing );
+
+	for ( ; index < length; index++ ) {
+		result = Animation.prefilters[ index ].call( animation, elem, props, animation.opts );
+		if ( result ) {
+			if ( isFunction( result.stop ) ) {
+				jQuery._queueHooks( animation.elem, animation.opts.queue ).stop =
+					result.stop.bind( result );
+			}
+			return result;
+		}
+	}
+
+	jQuery.map( props, createTween, animation );
+
+	if ( isFunction( animation.opts.start ) ) {
+		animation.opts.start.call( elem, animation );
+	}
+
+	// Attach callbacks from options
+	animation
+		.progress( animation.opts.progress )
+		.done( animation.opts.done, animation.opts.complete )
+		.fail( animation.opts.fail )
+		.always( animation.opts.always );
+
+	jQuery.fx.timer(
+		jQuery.extend( tick, {
+			elem: elem,
+			anim: animation,
+			queue: animation.opts.queue
+		} )
+	);
+
+	return animation;
+}
+
+jQuery.Animation = jQuery.extend( Animation, {
+
+	tweeners: {
+		"*": [ function( prop, value ) {
+			var tween = this.createTween( prop, value );
+			adjustCSS( tween.elem, prop, rcssNum.exec( value ), tween );
+			return tween;
+		} ]
+	},
+
+	tweener: function( props, callback ) {
+		if ( isFunction( props ) ) {
+			callback = props;
+			props = [ "*" ];
+		} else {
+			props = props.match( rnothtmlwhite );
+		}
+
+		var prop,
+			index = 0,
+			length = props.length;
+
+		for ( ; index < length; index++ ) {
+			prop = props[ index ];
+			Animation.tweeners[ prop ] = Animation.tweeners[ prop ] || [];
+			Animation.tweeners[ prop ].unshift( callback );
+		}
+	},
+
+	prefilters: [ defaultPrefilter ],
+
+	prefilter: function( callback, prepend ) {
+		if ( prepend ) {
+			Animation.prefilters.unshift( callback );
+		} else {
+			Animation.prefilters.push( callback );
+		}
+	}
+} );
+
+jQuery.speed = function( speed, easing, fn ) {
+	var opt = speed && typeof speed === "object" ? jQuery.extend( {}, speed ) : {
+		complete: fn || !fn && easing ||
+			isFunction( speed ) && speed,
+		duration: speed,
+		easing: fn && easing || easing && !isFunction( easing ) && easing
+	};
+
+	// Go to the end state if fx are off
+	if ( jQuery.fx.off ) {
+		opt.duration = 0;
+
+	} else {
+		if ( typeof opt.duration !== "number" ) {
+			if ( opt.duration in jQuery.fx.speeds ) {
+				opt.duration = jQuery.fx.speeds[ opt.duration ];
+
+			} else {
+				opt.duration = jQuery.fx.speeds._default;
+			}
+		}
+	}
+
+	// Normalize opt.queue - true/undefined/null -> "fx"
+	if ( opt.queue == null || opt.queue === true ) {
+		opt.queue = "fx";
+	}
+
+	// Queueing
+	opt.old = opt.complete;
+
+	opt.complete = function() {
+		if ( isFunction( opt.old ) ) {
+			opt.old.call( this );
+		}
+
+		if ( opt.queue ) {
+			jQuery.dequeue( this, opt.queue );
+		}
+	};
+
+	return opt;
+};
+
+jQuery.fn.extend( {
+	fadeTo: function( speed, to, easing, callback ) {
+
+		// Show any hidden elements after setting opacity to 0
+		return this.filter( isHiddenWithinTree ).css( "opacity", 0 ).show()
+
+			// Animate to the value specified
+			.end().animate( { opacity: to }, speed, easing, callback );
+	},
+	animate: function( prop, speed, easing, callback ) {
+		var empty = jQuery.isEmptyObject( prop ),
+			optall = jQuery.speed( speed, easing, callback ),
+			doAnimation = function() {
+
+				// Operate on a copy of prop so per-property easing won't be lost
+				var anim = Animation( this, jQuery.extend( {}, prop ), optall );
+
+				// Empty animations, or finishing resolves immediately
+				if ( empty || dataPriv.get( this, "finish" ) ) {
+					anim.stop( true );
+				}
+			};
+
+		doAnimation.finish = doAnimation;
+
+		return empty || optall.queue === false ?
+			this.each( doAnimation ) :
+			this.queue( optall.queue, doAnimation );
+	},
+	stop: function( type, clearQueue, gotoEnd ) {
+		var stopQueue = function( hooks ) {
+			var stop = hooks.stop;
+			delete hooks.stop;
+			stop( gotoEnd );
+		};
+
+		if ( typeof type !== "string" ) {
+			gotoEnd = clearQueue;
+			clearQueue = type;
+			type = undefined;
+		}
+		if ( clearQueue ) {
+			this.queue( type || "fx", [] );
+		}
+
+		return this.each( function() {
+			var dequeue = true,
+				index = type != null && type + "queueHooks",
+				timers = jQuery.timers,
+				data = dataPriv.get( this );
+
+			if ( index ) {
+				if ( data[ index ] && data[ index ].stop ) {
+					stopQueue( data[ index ] );
+				}
+			} else {
+				for ( index in data ) {
+					if ( data[ index ] && data[ index ].stop && rrun.test( index ) ) {
+						stopQueue( data[ index ] );
+					}
+				}
+			}
+
+			for ( index = timers.length; index--; ) {
+				if ( timers[ index ].elem === this &&
+					( type == null || timers[ index ].queue === type ) ) {
+
+					timers[ index ].anim.stop( gotoEnd );
+					dequeue = false;
+					timers.splice( index, 1 );
+				}
+			}
+
+			// Start the next in the queue if the last step wasn't forced.
+			// Timers currently will call their complete callbacks, which
+			// will dequeue but only if they were gotoEnd.
+			if ( dequeue || !gotoEnd ) {
+				jQuery.dequeue( this, type );
+			}
+		} );
+	},
+	finish: function( type ) {
+		if ( type !== false ) {
+			type = type || "fx";
+		}
+		return this.each( function() {
+			var index,
+				data = dataPriv.get( this ),
+				queue = data[ type + "queue" ],
+				hooks = data[ type + "queueHooks" ],
+				timers = jQuery.timers,
+				length = queue ? queue.length : 0;
+
+			// Enable finishing flag on private data
+			data.finish = true;
+
+			// Empty the queue first
+			jQuery.queue( this, type, [] );
+
+			if ( hooks && hooks.stop ) {
+				hooks.stop.call( this, true );
+			}
+
+			// Look for any active animations, and finish them
+			for ( index = timers.length; index--; ) {
+				if ( timers[ index ].elem === this && timers[ index ].queue === type ) {
+					timers[ index ].anim.stop( true );
+					timers.splice( index, 1 );
+				}
+			}
+
+			// Look for any animations in the old queue and finish them
+			for ( index = 0; index < length; index++ ) {
+				if ( queue[ index ] && queue[ index ].finish ) {
+					queue[ index ].finish.call( this );
+				}
+			}
+
+			// Turn off finishing flag
+			delete data.finish;
+		} );
+	}
+} );
+
+jQuery.each( [ "toggle", "show", "hide" ], function( _i, name ) {
+	var cssFn = jQuery.fn[ name ];
+	jQuery.fn[ name ] = function( speed, easing, callback ) {
+		return speed == null || typeof speed === "boolean" ?
+			cssFn.apply( this, arguments ) :
+			this.animate( genFx( name, true ), speed, easing, callback );
+	};
+} );
+
+// Generate shortcuts for custom animations
+jQuery.each( {
+	slideDown: genFx( "show" ),
+	slideUp: genFx( "hide" ),
+	slideToggle: genFx( "toggle" ),
+	fadeIn: { opacity: "show" },
+	fadeOut: { opacity: "hide" },
+	fadeToggle: { opacity: "toggle" }
+}, function( name, props ) {
+	jQuery.fn[ name ] = function( speed, easing, callback ) {
+		return this.animate( props, speed, easing, callback );
+	};
+} );
+
+jQuery.timers = [];
+jQuery.fx.tick = function() {
+	var timer,
+		i = 0,
+		timers = jQuery.timers;
+
+	fxNow = Date.now();
+
+	for ( ; i < timers.length; i++ ) {
+		timer = timers[ i ];
+
+		// Run the timer and safely remove it when done (allowing for external removal)
+		if ( !timer() && timers[ i ] === timer ) {
+			timers.splice( i--, 1 );
+		}
+	}
+
+	if ( !timers.length ) {
+		jQuery.fx.stop();
+	}
+	fxNow = undefined;
+};
+
+jQuery.fx.timer = function( timer ) {
+	jQuery.timers.push( timer );
+	jQuery.fx.start();
+};
+
+jQuery.fx.interval = 13;
+jQuery.fx.start = function() {
+	if ( inProgress ) {
+		return;
+	}
+
+	inProgress = true;
+	schedule();
+};
+
+jQuery.fx.stop = function() {
+	inProgress = null;
+};
+
+jQuery.fx.speeds = {
+	slow: 600,
+	fast: 200,
+
+	// Default speed
+	_default: 400
+};
+
+return jQuery;
+} );

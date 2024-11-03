@@ -1,1 +1,140 @@
-import CommandInterceptor from"diagram-js/lib/command/CommandInterceptor";import inherits from"inherits-browser";import{escapeCSS as cssEscape}from"diagram-js/lib/util/EscapeUtil";import{assign,forEach}from"min-dash";import{query as domQuery}from"min-dom";import{attr as svgAttr}from"tiny-svg";var LOW_PRIORITY=250;export default function BpmnReplacePreview(e,a,r,t,n){CommandInterceptor.call(this,e),e.on("shape.move.move",LOW_PRIORITY,(function(e){var m=e.context,i=m.canExecute;m.visualReplacements||(m.visualReplacements={}),i&&i.replacements?function(e){var m=e.canExecute.replacements;forEach(m,(function(m){var i=m.oldElementId,o={type:m.newElementType};if(!e.visualReplacements[i]){var s=a.get(i);assign(o,{x:s.x,y:s.y});var p=r.createShape(o);t.addShape(p,s.parent);var c=domQuery('[data-element-id="'+cssEscape(s.id)+'"]',e.dragGroup);c&&svgAttr(c,{display:"none"});var l=n.addDragger(p,e.dragGroup);e.visualReplacements[i]=l,t.removeShape(p)}}))}(m):function(e){var a=e.visualReplacements;forEach(a,(function(r,t){var n=domQuery('[data-element-id="'+cssEscape(t)+'"]',e.dragGroup);n&&svgAttr(n,{display:"inline"}),r.remove(),a[t]&&delete a[t]}))}(m)}))}BpmnReplacePreview.$inject=["eventBus","elementRegistry","elementFactory","canvas","previewSupport"],inherits(BpmnReplacePreview,CommandInterceptor);
+import CommandInterceptor from 'diagram-js/lib/command/CommandInterceptor';
+
+import inherits from 'inherits-browser';
+
+import { escapeCSS as cssEscape } from 'diagram-js/lib/util/EscapeUtil';
+
+import {
+  assign,
+  forEach
+} from 'min-dash';
+
+import {
+  query as domQuery
+} from 'min-dom';
+
+import {
+  attr as svgAttr
+} from 'tiny-svg';
+
+/**
+ * @typedef {import('diagram-js/lib/core/EventBus').default} EventBus
+ * @typedef {import('diagram-js/lib/core/ElementRegistry').default} ElementRegistry
+ * @typedef {import('diagram-js/lib/core/ElementFactory').default} ElementFactory
+ * @typedef {import('diagram-js/lib/core/Canvas').default} Canvas
+ * @typedef {import('diagram-js/lib/features/preview-support/PreviewSupport').default} PreviewSupport
+ */
+
+var LOW_PRIORITY = 250;
+
+/**
+ * @param {EventBus} eventBus
+ * @param {ElementRegistry} elementRegistry
+ * @param {ElementFactory} elementFactory
+ * @param {Canvas} canvas
+ * @param {PreviewSupport} previewSupport
+ */
+export default function BpmnReplacePreview(
+    eventBus, elementRegistry, elementFactory,
+    canvas, previewSupport) {
+
+  CommandInterceptor.call(this, eventBus);
+
+  /**
+   * Replace the visuals of all elements in the context which can be replaced
+   *
+   * @param  {Object} context
+   */
+  function replaceVisual(context) {
+
+    var replacements = context.canExecute.replacements;
+
+    forEach(replacements, function(replacement) {
+
+      var id = replacement.oldElementId;
+
+      var newElement = {
+        type: replacement.newElementType
+      };
+
+      // if the visual of the element is already replaced
+      if (context.visualReplacements[id]) {
+        return;
+      }
+
+      var element = elementRegistry.get(id);
+
+      assign(newElement, { x: element.x, y: element.y });
+
+      // create a temporary shape
+      var tempShape = elementFactory.createShape(newElement);
+
+      canvas.addShape(tempShape, element.parent);
+
+      // select the original SVG element related to the element and hide it
+      var gfx = domQuery('[data-element-id="' + cssEscape(element.id) + '"]', context.dragGroup);
+
+      if (gfx) {
+        svgAttr(gfx, { display: 'none' });
+      }
+
+      // clone the gfx of the temporary shape and add it to the drag group
+      var dragger = previewSupport.addDragger(tempShape, context.dragGroup);
+
+      context.visualReplacements[id] = dragger;
+
+      canvas.removeShape(tempShape);
+    });
+  }
+
+  /**
+   * Restore the original visuals of the previously replaced elements
+   *
+   * @param  {Object} context
+   */
+  function restoreVisual(context) {
+
+    var visualReplacements = context.visualReplacements;
+
+    forEach(visualReplacements, function(dragger, id) {
+
+      var originalGfx = domQuery('[data-element-id="' + cssEscape(id) + '"]', context.dragGroup);
+
+      if (originalGfx) {
+        svgAttr(originalGfx, { display: 'inline' });
+      }
+
+      dragger.remove();
+
+      if (visualReplacements[id]) {
+        delete visualReplacements[id];
+      }
+    });
+  }
+
+  eventBus.on('shape.move.move', LOW_PRIORITY, function(event) {
+
+    var context = event.context,
+        canExecute = context.canExecute;
+
+    if (!context.visualReplacements) {
+      context.visualReplacements = {};
+    }
+
+    if (canExecute && canExecute.replacements) {
+      replaceVisual(context);
+    } else {
+      restoreVisual(context);
+    }
+  });
+}
+
+BpmnReplacePreview.$inject = [
+  'eventBus',
+  'elementRegistry',
+  'elementFactory',
+  'canvas',
+  'previewSupport'
+];
+
+inherits(BpmnReplacePreview, CommandInterceptor);

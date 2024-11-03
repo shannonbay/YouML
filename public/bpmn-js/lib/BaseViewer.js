@@ -1,1 +1,858 @@
-import{assign,find,isNumber,omit}from"min-dash";import{domify,assignStyle,query as domQuery,remove as domRemove}from"min-dom";import{innerSVG}from"tiny-svg";import Diagram from"diagram-js";import BpmnModdle from"bpmn-moddle";import inherits from"inherits-browser";import{importBpmnDiagram}from"./import/Importer";export default function BaseViewer(t){t=assign({},DEFAULT_OPTIONS,t),this._moddle=this._createModdle(t),this._container=this._createContainer(t),addProjectLogo(this._container),this._init(this._container,this._moddle,t)}function addWarningsToError(t,e){return t.warnings=e,t}function checkValidationError(t){const e=/unparsable content <([^>]+)> detected([\s\S]*)$/.exec(t.message);return e&&(t.message="unparsable content <"+e[1]+"> detected; this may indicate an invalid BPMN 2.0 diagram file"+e[2]),t}inherits(BaseViewer,Diagram),BaseViewer.prototype.importXML=async function(t,e){const i=this;let n=[];try{let r;t=this._emit("import.parse.start",{xml:t})||t;try{r=await this._moddle.fromXML(t,"bpmn:Definitions")}catch(t){throw this._emit("import.parse.complete",{error:t}),t}let s=r.rootElement;const a=r.references,d=r.warnings,c=r.elementsById;n=n.concat(d),s=this._emit("import.parse.complete",(o={error:null,definitions:s,elementsById:c,references:a,warnings:n},i.get("eventBus").createEvent(o)))||s;const m=await this.importDefinitions(s,e);return n=n.concat(m.warnings),this._emit("import.done",{error:null,warnings:n}),{warnings:n}}catch(t){let e=t;throw n=n.concat(e.warnings||[]),addWarningsToError(e,n),e=checkValidationError(e),this._emit("import.done",{error:e,warnings:e.warnings}),e}var o},BaseViewer.prototype.importDefinitions=async function(t,e){return this._setDefinitions(t),{warnings:(await this.open(e)).warnings}},BaseViewer.prototype.open=async function(t){const e=this._definitions;let i=t;if(!e){const t=new Error("no XML imported");throw addWarningsToError(t,[]),t}if("string"==typeof t&&(i=findBPMNDiagram(e,t),!i)){const e=new Error("BPMNDiagram <"+t+"> not found");throw addWarningsToError(e,[]),e}try{this.clear()}catch(t){throw addWarningsToError(t,[]),t}const{warnings:n}=await importBpmnDiagram(this,e,i);return{warnings:n}},BaseViewer.prototype.saveXML=async function(t){t=t||{};let e,i,n=this._definitions;try{if(!n)throw new Error("no definitions loaded");n=this._emit("saveXML.start",{definitions:n})||n,i=(await this._moddle.toXML(n,t)).xml,i=this._emit("saveXML.serialized",{xml:i})||i}catch(t){e=t}const o=e?{error:e}:{xml:i};if(this._emit("saveXML.done",o),e)throw e;return o},BaseViewer.prototype.saveSVG=async function(){let t,e;this._emit("saveSVG.start");try{const e=this.get("canvas"),i=e.getActiveLayer(),n=domQuery(":scope > defs",e._svg),o=innerSVG(i),r=n?"<defs>"+innerSVG(n)+"</defs>":"",s=i.getBBox();t='<?xml version="1.0" encoding="utf-8"?>\n\x3c!-- created with bpmn-js / http://bpmn.io --\x3e\n<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">\n<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="'+s.width+'" height="'+s.height+'" viewBox="'+s.x+" "+s.y+" "+s.width+" "+s.height+'" version="1.1">'+r+o+"</svg>"}catch(t){e=t}if(this._emit("saveSVG.done",{error:e,svg:t}),e)throw e;return{svg:t}},BaseViewer.prototype._setDefinitions=function(t){this._definitions=t},BaseViewer.prototype.getModules=function(){return this._modules},BaseViewer.prototype.clear=function(){this.getDefinitions()&&Diagram.prototype.clear.call(this)},BaseViewer.prototype.destroy=function(){Diagram.prototype.destroy.call(this),domRemove(this._container)},BaseViewer.prototype.on=function(t,e,i,n){return this.get("eventBus").on(t,e,i,n)},BaseViewer.prototype.off=function(t,e){this.get("eventBus").off(t,e)},BaseViewer.prototype.attachTo=function(t){if(!t)throw new Error("parentNode required");this.detach(),t.get&&t.constructor.prototype.jquery&&(t=t.get(0)),"string"==typeof t&&(t=domQuery(t)),t.appendChild(this._container),this._emit("attach",{}),this.get("canvas").resized()},BaseViewer.prototype.getDefinitions=function(){return this._definitions},BaseViewer.prototype.detach=function(){const t=this._container,e=t.parentNode;e&&(this._emit("detach",{}),e.removeChild(t))},BaseViewer.prototype._init=function(t,e,i){const n=i.modules||this.getModules(i),o=i.additionalModules||[],r=[].concat([{bpmnjs:["value",this],moddle:["value",e]}],n,o),s=assign(omit(i,["additionalModules"]),{canvas:assign({},i.canvas,{container:t}),modules:r});Diagram.call(this,s),i&&i.container&&this.attachTo(i.container)},BaseViewer.prototype._emit=function(t,e){return this.get("eventBus").fire(t,e)},BaseViewer.prototype._createContainer=function(t){const e=domify('<div class="bjs-container"></div>');return assignStyle(e,{width:ensureUnit(t.width),height:ensureUnit(t.height),position:t.position}),e},BaseViewer.prototype._createModdle=function(t){const e=assign({},this._moddleExtensions,t.moddleExtensions);return new BpmnModdle(e)},BaseViewer.prototype._modules=[];const DEFAULT_OPTIONS={width:"100%",height:"100%",position:"relative"};function ensureUnit(t){return t+(isNumber(t)?"px":"")}function findBPMNDiagram(t,e){return e&&find(t.diagrams,(function(t){return t.id===e}))||null}import{open as openPoweredBy,BPMNIO_IMG,LOGO_STYLES,LINK_STYLES}from"./util/PoweredByUtil";import{event as domEvent}from"min-dom";function addProjectLogo(t){const e=domify('<a href="http://bpmn.io" target="_blank" class="bjs-powered-by" title="Powered by bpmn.io" >'+BPMNIO_IMG+"</a>");assignStyle(domQuery("svg",e),LOGO_STYLES),assignStyle(e,LINK_STYLES,{position:"absolute",bottom:"15px",right:"15px",zIndex:"100"}),t.appendChild(e),domEvent.bind(e,"click",(function(t){openPoweredBy(),t.preventDefault()}))}
+/**
+ * The code in the <project-logo></project-logo> area
+ * must not be changed.
+ *
+ * @see http://bpmn.io/license for more information.
+ */
+import {
+  assign,
+  find,
+  isNumber,
+  omit
+} from 'min-dash';
+
+import {
+  domify,
+  assignStyle,
+  query as domQuery,
+  remove as domRemove
+} from 'min-dom';
+
+import {
+  innerSVG
+} from 'tiny-svg';
+
+import Diagram from 'diagram-js';
+import BpmnModdle from 'bpmn-moddle';
+
+import inherits from 'inherits-browser';
+
+import {
+  importBpmnDiagram
+} from './import/Importer';
+
+/**
+ * @template T
+ *
+ * @typedef { import('diagram-js/lib/core/EventBus').default<T> } EventBus
+ */
+
+/**
+ * @template T
+ *
+ * @typedef {import('diagram-js/lib/core/EventBus').EventBusEventCallback<T>} EventBusEventCallback
+ */
+
+/**
+ * @typedef {import('didi').ModuleDeclaration} ModuleDeclaration
+ *
+ * @typedef {import('./model/Types').Moddle} Moddle
+ * @typedef {import('./model/Types').ModdleElement} ModdleElement
+ * @typedef {import('./model/Types').ModdleExtension} ModdleExtension
+ *
+ * @typedef { {
+ *   width?: number|string;
+ *   height?: number|string;
+ *   position?: string;
+ *   container?: string|HTMLElement;
+ *   moddleExtensions?: ModdleExtensions;
+ *   additionalModules?: ModuleDeclaration[];
+ * } & Record<string, any> } BaseViewerOptions
+ *
+ * @typedef {Record<string, ModdleElement>} ModdleElementsById
+ *
+ * @typedef { {
+ *   [key: string]: ModdleExtension;
+ * } } ModdleExtensions
+ *
+ * @typedef { {
+ *   warnings: string[];
+ * } } ImportXMLResult
+ *
+ * @typedef {ImportXMLResult & Error} ImportXMLError
+ *
+ * @typedef {ImportXMLResult} ImportDefinitionsResult
+ *
+ * @typedef {ImportXMLError} ImportDefinitionsError
+ *
+ * @typedef {ImportXMLResult} OpenResult
+ *
+ * @typedef {ImportXMLError} OpenError
+ *
+ * @typedef { {
+ *   format?: boolean;
+ *   preamble?: boolean;
+ * } } SaveXMLOptions
+ *
+ * @typedef { {
+ *   xml?: string;
+ *   error?: Error;
+ * } } SaveXMLResult
+ *
+ * @typedef { {
+ *   svg: string;
+ * } } SaveSVGResult
+ *
+ * @typedef { {
+ *   xml: string;
+ * } } ImportParseStartEvent
+ *
+ * @typedef { {
+ *   error?: ImportXMLError;
+ *   definitions?: ModdleElement;
+ *   elementsById?: ModdleElementsById;
+ *   references?: ModdleElement[];
+ *   warnings: string[];
+ * } } ImportParseCompleteEvent
+ *
+ * @typedef { {
+ *   error?: ImportXMLError;
+ *   warnings: string[];
+ * } } ImportDoneEvent
+ *
+ * @typedef { {
+ *   definitions: ModdleElement;
+ * } } SaveXMLStartEvent
+ *
+ * @typedef {SaveXMLResult} SaveXMLDoneEvent
+ *
+ * @typedef { {
+ *   error?: Error;
+ *   svg: string;
+ * } } SaveSVGDoneEvent
+ */
+
+/**
+ * @template Type
+ *
+ * @typedef { Type extends { eventBus: EventBus<infer X> } ? X : never } EventMap
+ */
+
+/**
+ * A base viewer for BPMN 2.0 diagrams.
+ *
+ * Have a look at {@link bpmn-js/lib/Viewer}, {@link bpmn-js/lib/NavigatedViewer} or {@link bpmn-js/lib/Modeler} for
+ * bundles that include actual features.
+ *
+ * @template [ServiceMap=null]
+ *
+ * @extends Diagram<ServiceMap>
+ *
+ * @param {BaseViewerOptions} [options] The options to configure the viewer.
+ */
+export default function BaseViewer(options) {
+
+  /**
+   * @type {BaseViewerOptions}
+   */
+  options = assign({}, DEFAULT_OPTIONS, options);
+
+  /**
+   * @type {Moddle}
+   */
+  this._moddle = this._createModdle(options);
+
+  /**
+   * @type {HTMLElement}
+   */
+  this._container = this._createContainer(options);
+
+  /* <project-logo> */
+
+  addProjectLogo(this._container);
+
+  /* </project-logo> */
+
+  this._init(this._container, this._moddle, options);
+}
+
+inherits(BaseViewer, Diagram);
+
+/**
+ * Parse and render a BPMN 2.0 diagram.
+ *
+ * Once finished the viewer reports back the result to the
+ * provided callback function with (err, warnings).
+ *
+ * ## Life-Cycle Events
+ *
+ * During import the viewer will fire life-cycle events:
+ *
+ *   * import.parse.start (about to read model from XML)
+ *   * import.parse.complete (model read; may have worked or not)
+ *   * import.render.start (graphical import start)
+ *   * import.render.complete (graphical import finished)
+ *   * import.done (everything done)
+ *
+ * You can use these events to hook into the life-cycle.
+ *
+ * @throws {ImportXMLError} An error thrown during the import of the XML.
+ *
+ * @fires BaseViewer#ImportParseStartEvent
+ * @fires BaseViewer#ImportParseCompleteEvent
+ * @fires Importer#ImportRenderStartEvent
+ * @fires Importer#ImportRenderCompleteEvent
+ * @fires BaseViewer#ImportDoneEvent
+ *
+ * @param {string} xml The BPMN 2.0 XML to be imported.
+ * @param {ModdleElement|string} [bpmnDiagram] The optional diagram or Id of the BPMN diagram to open.
+ *
+ * @return {Promise<ImportXMLResult>} A promise resolving with warnings that were produced during the import.
+ */
+BaseViewer.prototype.importXML = async function importXML(xml, bpmnDiagram) {
+
+  const self = this;
+
+  function ParseCompleteEvent(data) {
+    return self.get('eventBus').createEvent(data);
+  }
+
+  let aggregatedWarnings = [];
+  try {
+
+    // hook in pre-parse listeners +
+    // allow xml manipulation
+
+    /**
+     * A `import.parse.start` event.
+     *
+     * @event BaseViewer#ImportParseStartEvent
+     * @type {ImportParseStartEvent}
+     */
+    xml = this._emit('import.parse.start', { xml: xml }) || xml;
+
+    let parseResult;
+    try {
+      parseResult = await this._moddle.fromXML(xml, 'bpmn:Definitions');
+    } catch (error) {
+      this._emit('import.parse.complete', {
+        error
+      });
+
+      throw error;
+    }
+
+    let definitions = parseResult.rootElement;
+    const references = parseResult.references;
+    const parseWarnings = parseResult.warnings;
+    const elementsById = parseResult.elementsById;
+
+    aggregatedWarnings = aggregatedWarnings.concat(parseWarnings);
+
+    // hook in post parse listeners +
+    // allow definitions manipulation
+
+    /**
+     * A `import.parse.complete` event.
+     *
+     * @event BaseViewer#ImportParseCompleteEvent
+     * @type {ImportParseCompleteEvent}
+     */
+    definitions = this._emit('import.parse.complete', ParseCompleteEvent({
+      error: null,
+      definitions: definitions,
+      elementsById: elementsById,
+      references: references,
+      warnings: aggregatedWarnings
+    })) || definitions;
+
+    const importResult = await this.importDefinitions(definitions, bpmnDiagram);
+
+    aggregatedWarnings = aggregatedWarnings.concat(importResult.warnings);
+
+    /**
+     * A `import.parse.complete` event.
+     *
+     * @event BaseViewer#ImportDoneEvent
+     * @type {ImportDoneEvent}
+     */
+    this._emit('import.done', { error: null, warnings: aggregatedWarnings });
+
+    return { warnings: aggregatedWarnings };
+  } catch (err) {
+    let error = err;
+    aggregatedWarnings = aggregatedWarnings.concat(error.warnings || []);
+    addWarningsToError(error, aggregatedWarnings);
+
+    error = checkValidationError(error);
+
+    this._emit('import.done', { error, warnings: error.warnings });
+
+    throw error;
+  }
+};
+
+
+/**
+ * Import parsed definitions and render a BPMN 2.0 diagram.
+ *
+ * Once finished the viewer reports back the result to the
+ * provided callback function with (err, warnings).
+ *
+ * ## Life-Cycle Events
+ *
+ * During import the viewer will fire life-cycle events:
+ *
+ *   * import.render.start (graphical import start)
+ *   * import.render.complete (graphical import finished)
+ *
+ * You can use these events to hook into the life-cycle.
+ *
+ * @throws {ImportDefinitionsError} An error thrown during the import of the definitions.
+ *
+ * @param {ModdleElement} definitions The definitions.
+ * @param {ModdleElement|string} [bpmnDiagram] The optional diagram or ID of the BPMN diagram to open.
+ *
+ * @return {Promise<ImportDefinitionsResult>} A promise resolving with warnings that were produced during the import.
+ */
+BaseViewer.prototype.importDefinitions = async function importDefinitions(definitions, bpmnDiagram) {
+  this._setDefinitions(definitions);
+  const result = await this.open(bpmnDiagram);
+
+  return { warnings: result.warnings };
+};
+
+
+/**
+ * Open diagram of previously imported XML.
+ *
+ * Once finished the viewer reports back the result to the
+ * provided callback function with (err, warnings).
+ *
+ * ## Life-Cycle Events
+ *
+ * During switch the viewer will fire life-cycle events:
+ *
+ *   * import.render.start (graphical import start)
+ *   * import.render.complete (graphical import finished)
+ *
+ * You can use these events to hook into the life-cycle.
+ *
+ * @throws {OpenError} An error thrown during opening.
+ *
+ * @param {ModdleElement|string} bpmnDiagramOrId The diagram or Id of the BPMN diagram to open.
+ *
+ * @return {Promise<OpenResult>} A promise resolving with warnings that were produced during opening.
+ */
+BaseViewer.prototype.open = async function open(bpmnDiagramOrId) {
+
+  const definitions = this._definitions;
+  let bpmnDiagram = bpmnDiagramOrId;
+
+  if (!definitions) {
+    const error = new Error('no XML imported');
+    addWarningsToError(error, []);
+
+    throw error;
+  }
+
+  if (typeof bpmnDiagramOrId === 'string') {
+    bpmnDiagram = findBPMNDiagram(definitions, bpmnDiagramOrId);
+
+    if (!bpmnDiagram) {
+      const error = new Error('BPMNDiagram <' + bpmnDiagramOrId + '> not found');
+      addWarningsToError(error, []);
+
+      throw error;
+    }
+  }
+
+  // clear existing rendered diagram
+  // catch synchronous exceptions during #clear()
+  try {
+    this.clear();
+  } catch (error) {
+    addWarningsToError(error, []);
+
+    throw error;
+  }
+
+  // perform graphical import
+  const { warnings } = await importBpmnDiagram(this, definitions, bpmnDiagram);
+
+  return { warnings };
+};
+
+/**
+ * Export the currently displayed BPMN 2.0 diagram as
+ * a BPMN 2.0 XML document.
+ *
+ * ## Life-Cycle Events
+ *
+ * During XML saving the viewer will fire life-cycle events:
+ *
+ *   * saveXML.start (before serialization)
+ *   * saveXML.serialized (after xml generation)
+ *   * saveXML.done (everything done)
+ *
+ * You can use these events to hook into the life-cycle.
+ *
+ * @throws {Error} An error thrown during export.
+ *
+ * @fires BaseViewer#SaveXMLStart
+ * @fires BaseViewer#SaveXMLDone
+ *
+ * @param {SaveXMLOptions} [options] The options.
+ *
+ * @return {Promise<SaveXMLResult>} A promise resolving with the XML.
+ */
+BaseViewer.prototype.saveXML = async function saveXML(options) {
+
+  options = options || {};
+
+  let definitions = this._definitions,
+      error, xml;
+
+  try {
+    if (!definitions) {
+      throw new Error('no definitions loaded');
+    }
+
+    // allow to fiddle around with definitions
+
+    /**
+     * A `saveXML.start` event.
+     *
+     * @event BaseViewer#SaveXMLStartEvent
+     * @type {SaveXMLStartEvent}
+     */
+    definitions = this._emit('saveXML.start', {
+      definitions
+    }) || definitions;
+
+    const result = await this._moddle.toXML(definitions, options);
+    xml = result.xml;
+
+    xml = this._emit('saveXML.serialized', {
+      xml
+    }) || xml;
+  } catch (err) {
+    error = err;
+  }
+
+  const result = error ? { error } : { xml };
+
+  /**
+   * A `saveXML.done` event.
+   *
+   * @event BaseViewer#SaveXMLDoneEvent
+   * @type {SaveXMLDoneEvent}
+   */
+  this._emit('saveXML.done', result);
+
+  if (error) {
+    throw error;
+  }
+
+  return result;
+};
+
+
+/**
+ * Export the currently displayed BPMN 2.0 diagram as
+ * an SVG image.
+ *
+ * ## Life-Cycle Events
+ *
+ * During SVG saving the viewer will fire life-cycle events:
+ *
+ *   * saveSVG.start (before serialization)
+ *   * saveSVG.done (everything done)
+ *
+ * You can use these events to hook into the life-cycle.
+ *
+ * @throws {Error} An error thrown during export.
+ *
+ * @fires BaseViewer#SaveSVGDone
+ *
+ * @return {Promise<SaveSVGResult>} A promise resolving with the SVG.
+ */
+BaseViewer.prototype.saveSVG = async function saveSVG() {
+  this._emit('saveSVG.start');
+
+  let svg, err;
+
+  try {
+    const canvas = this.get('canvas');
+
+    const contentNode = canvas.getActiveLayer(),
+          defsNode = domQuery(':scope > defs', canvas._svg);
+
+    const contents = innerSVG(contentNode),
+          defs = defsNode ? '<defs>' + innerSVG(defsNode) + '</defs>' : '';
+
+    const bbox = contentNode.getBBox();
+
+    svg =
+      '<?xml version="1.0" encoding="utf-8"?>\n' +
+      '<!-- created with bpmn-js / http://bpmn.io -->\n' +
+      '<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">\n' +
+      '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" ' +
+      'width="' + bbox.width + '" height="' + bbox.height + '" ' +
+      'viewBox="' + bbox.x + ' ' + bbox.y + ' ' + bbox.width + ' ' + bbox.height + '" version="1.1">' +
+      defs + contents +
+      '</svg>';
+  } catch (e) {
+    err = e;
+  }
+
+  /**
+   * A `saveSVG.done` event.
+   *
+   * @event BaseViewer#SaveSVGDoneEvent
+   * @type {SaveSVGDoneEvent}
+   */
+  this._emit('saveSVG.done', {
+    error: err,
+    svg: svg
+  });
+
+  if (err) {
+    throw err;
+  }
+
+  return { svg };
+};
+
+BaseViewer.prototype._setDefinitions = function(definitions) {
+  this._definitions = definitions;
+};
+
+/**
+ * Return modules to instantiate with.
+ *
+ * @return {ModuleDeclaration[]} The modules.
+ */
+BaseViewer.prototype.getModules = function() {
+  return this._modules;
+};
+
+/**
+ * Remove all drawn elements from the viewer.
+ *
+ * After calling this method the viewer can still be reused for opening another
+ * diagram.
+ */
+BaseViewer.prototype.clear = function() {
+  if (!this.getDefinitions()) {
+
+    // no diagram to clear
+    return;
+  }
+
+  // remove drawn elements
+  Diagram.prototype.clear.call(this);
+};
+
+/**
+ * Destroy the viewer instance and remove all its remainders from the document
+ * tree.
+ */
+BaseViewer.prototype.destroy = function() {
+
+  // diagram destroy
+  Diagram.prototype.destroy.call(this);
+
+  // dom detach
+  domRemove(this._container);
+};
+
+/**
+ * @overlord
+ *
+ * Register an event listener for events with the given name.
+ *
+ * The callback will be invoked with `event, ...additionalArguments`
+ * that have been passed to {@link EventBus#fire}.
+ *
+ * Returning false from a listener will prevent the events default action
+ * (if any is specified). To stop an event from being processed further in
+ * other listeners execute {@link Event#stopPropagation}.
+ *
+ * Returning anything but `undefined` from a listener will stop the listener propagation.
+ *
+ * @template T
+ *
+ * @param {string|string[]} events The event(s) to listen to.
+ * @param {number} [priority] The priority with which to listen.
+ * @param {EventBusEventCallback<T>} callback The callback.
+ * @param {any} [that] Value of `this` the callback will be called with.
+ */
+/**
+ * Register an event listener for events with the given name.
+ *
+ * The callback will be invoked with `event, ...additionalArguments`
+ * that have been passed to {@link EventBus#fire}.
+ *
+ * Returning false from a listener will prevent the events default action
+ * (if any is specified). To stop an event from being processed further in
+ * other listeners execute {@link Event#stopPropagation}.
+ *
+ * Returning anything but `undefined` from a listener will stop the listener propagation.
+ *
+ * @template {keyof EventMap<ServiceMap>} EventName
+ *
+ * @param {EventName} events to subscribe to
+ * @param {number} [priority=1000] listen priority
+ * @param {EventBusEventCallback<(EventMap<ServiceMap>)[EventName]>} callback
+ * @param {any} [that] callback context
+ */
+BaseViewer.prototype.on = function(events, priority, callback, that) {
+  return this.get('eventBus').on(events, priority, callback, that);
+};
+
+/**
+ * Remove an event listener.
+ *
+ * @param {string|string[]} events The event(s).
+ * @param {Function} [callback] The callback.
+ */
+BaseViewer.prototype.off = function(events, callback) {
+  this.get('eventBus').off(events, callback);
+};
+
+/**
+ * Attach the viewer to an HTML element.
+ *
+ * @param {HTMLElement} parentNode The parent node to attach to.
+ */
+BaseViewer.prototype.attachTo = function(parentNode) {
+
+  if (!parentNode) {
+    throw new Error('parentNode required');
+  }
+
+  // ensure we detach from the
+  // previous, old parent
+  this.detach();
+
+  // unwrap jQuery if provided
+  if (parentNode.get && parentNode.constructor.prototype.jquery) {
+    parentNode = parentNode.get(0);
+  }
+
+  if (typeof parentNode === 'string') {
+    parentNode = domQuery(parentNode);
+  }
+
+  parentNode.appendChild(this._container);
+
+  this._emit('attach', {});
+
+  this.get('canvas').resized();
+};
+
+/**
+ * Get the definitions model element.
+ *
+ * @return {ModdleElement} The definitions model element.
+ */
+BaseViewer.prototype.getDefinitions = function() {
+  return this._definitions;
+};
+
+/**
+ * Detach the viewer.
+ *
+ * @fires BaseViewer#DetachEvent
+ */
+BaseViewer.prototype.detach = function() {
+
+  const container = this._container,
+        parentNode = container.parentNode;
+
+  if (!parentNode) {
+    return;
+  }
+
+  /**
+   * A `detach` event.
+   *
+   * @event BaseViewer#DetachEvent
+   * @type {Object}
+   */
+  this._emit('detach', {});
+
+  parentNode.removeChild(container);
+};
+
+BaseViewer.prototype._init = function(container, moddle, options) {
+
+  const baseModules = options.modules || this.getModules(options),
+        additionalModules = options.additionalModules || [],
+        staticModules = [
+          {
+            bpmnjs: [ 'value', this ],
+            moddle: [ 'value', moddle ]
+          }
+        ];
+
+  const diagramModules = [].concat(staticModules, baseModules, additionalModules);
+
+  const diagramOptions = assign(omit(options, [ 'additionalModules' ]), {
+    canvas: assign({}, options.canvas, { container: container }),
+    modules: diagramModules
+  });
+
+  // invoke diagram constructor
+  Diagram.call(this, diagramOptions);
+
+  if (options && options.container) {
+    this.attachTo(options.container);
+  }
+};
+
+/**
+ * Emit an event on the underlying {@link EventBus}
+ *
+ * @param  {string} type
+ * @param  {Object} event
+ *
+ * @return {Object} The return value after calling all event listeners.
+ */
+BaseViewer.prototype._emit = function(type, event) {
+  return this.get('eventBus').fire(type, event);
+};
+
+/**
+ * @param {BaseViewerOptions} options
+ *
+ * @return {HTMLElement}
+ */
+BaseViewer.prototype._createContainer = function(options) {
+
+  const container = domify('<div class="bjs-container"></div>');
+
+  assignStyle(container, {
+    width: ensureUnit(options.width),
+    height: ensureUnit(options.height),
+    position: options.position
+  });
+
+  return container;
+};
+
+/**
+ * @param {BaseViewerOptions} options
+ *
+ * @return {Moddle}
+ */
+BaseViewer.prototype._createModdle = function(options) {
+  const moddleOptions = assign({}, this._moddleExtensions, options.moddleExtensions);
+
+  return new BpmnModdle(moddleOptions);
+};
+
+BaseViewer.prototype._modules = [];
+
+// helpers ///////////////
+
+function addWarningsToError(err, warningsAry) {
+  err.warnings = warningsAry;
+  return err;
+}
+
+function checkValidationError(err) {
+
+  // check if we can help the user by indicating wrong BPMN 2.0 xml
+  // (in case he or the exporting tool did not get that right)
+
+  const pattern = /unparsable content <([^>]+)> detected([\s\S]*)$/;
+  const match = pattern.exec(err.message);
+
+  if (match) {
+    err.message =
+      'unparsable content <' + match[1] + '> detected; ' +
+      'this may indicate an invalid BPMN 2.0 diagram file' + match[2];
+  }
+
+  return err;
+}
+
+const DEFAULT_OPTIONS = {
+  width: '100%',
+  height: '100%',
+  position: 'relative'
+};
+
+
+/**
+ * Ensure the passed argument is a proper unit (defaulting to px)
+ */
+function ensureUnit(val) {
+  return val + (isNumber(val) ? 'px' : '');
+}
+
+
+/**
+ * Find BPMNDiagram in definitions by ID
+ *
+ * @param {ModdleElement<Definitions>} definitions
+ * @param {string} diagramId
+ *
+ * @return {ModdleElement<BPMNDiagram>|null}
+ */
+function findBPMNDiagram(definitions, diagramId) {
+  if (!diagramId) {
+    return null;
+  }
+
+  return find(definitions.diagrams, function(element) {
+    return element.id === diagramId;
+  }) || null;
+}
+
+
+/* <project-logo> */
+
+import {
+  open as openPoweredBy,
+  BPMNIO_IMG,
+  LOGO_STYLES,
+  LINK_STYLES
+} from './util/PoweredByUtil';
+
+import {
+  event as domEvent
+} from 'min-dom';
+
+/**
+ * Adds the project logo to the diagram container as
+ * required by the bpmn.io license.
+ *
+ * @see http://bpmn.io/license
+ *
+ * @param {Element} container
+ */
+function addProjectLogo(container) {
+  const img = BPMNIO_IMG;
+
+  const linkMarkup =
+    '<a href="http://bpmn.io" ' +
+    'target="_blank" ' +
+    'class="bjs-powered-by" ' +
+    'title="Powered by bpmn.io" ' +
+    '>' +
+    img +
+    '</a>';
+
+  const linkElement = domify(linkMarkup);
+
+  assignStyle(domQuery('svg', linkElement), LOGO_STYLES);
+  assignStyle(linkElement, LINK_STYLES, {
+    position: 'absolute',
+    bottom: '15px',
+    right: '15px',
+    zIndex: '100'
+  });
+
+  container.appendChild(linkElement);
+
+  domEvent.bind(linkElement, 'click', function(event) {
+    openPoweredBy();
+
+    event.preventDefault();
+  });
+}
+
+/* </project-logo> */

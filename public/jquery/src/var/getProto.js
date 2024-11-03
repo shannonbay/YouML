@@ -1,1 +1,5 @@
-define((function(){"use strict";return Object.getPrototypeOf}));
+define( function() {
+	"use strict";
+
+	return Object.getPrototypeOf;
+} );

@@ -1,1 +1,121 @@
-import{assign}from"min-dash";import inherits from"inherits-browser";import CommandInterceptor from"diagram-js/lib/command/CommandInterceptor";import{getConnectionAdjustment as getConnectionAnchorPoint}from"./util/ConnectionLayoutUtil";export default function LayoutConnectionBehavior(n,o){function t(n,o){var t=n.context,i=t.connection,e=assign({},t.hints),a=t.newWaypoints||i.waypoints,c=t.oldWaypoints;return void 0===e.startChanged&&(e.startChanged=!!e.connectionStart),void 0===e.endChanged&&(e.endChanged=!!e.connectionEnd),getConnectionAnchorPoint(o,a,c,e)}CommandInterceptor.call(this,n),this.postExecute(["connection.layout","connection.updateWaypoints"],(function(n){var i=n.context.connection,e=i.outgoing;i.incoming.forEach((function(i){var e=i.waypoints[i.waypoints.length-1],a=t(n,e),c=[].concat(i.waypoints.slice(0,-1),[a]);o.updateWaypoints(i,c)})),e.forEach((function(i){var e=i.waypoints[0],a=t(n,e),c=[].concat([a],i.waypoints.slice(1));o.updateWaypoints(i,c)}))})),this.postExecute(["connection.move"],(function(n){var t=n.context,i=t.connection,e=i.outgoing,a=i.incoming,c=t.delta;a.forEach((function(n){var t=n.waypoints[n.waypoints.length-1],i={x:t.x+c.x,y:t.y+c.y},e=[].concat(n.waypoints.slice(0,-1),[i]);o.updateWaypoints(n,e)})),e.forEach((function(n){var t=n.waypoints[0],i={x:t.x+c.x,y:t.y+c.y},e=[].concat([i],n.waypoints.slice(1));o.updateWaypoints(n,e)}))}))}inherits(LayoutConnectionBehavior,CommandInterceptor),LayoutConnectionBehavior.$inject=["eventBus","modeling"];
+import {
+  assign
+} from 'min-dash';
+
+import inherits from 'inherits-browser';
+
+import CommandInterceptor from 'diagram-js/lib/command/CommandInterceptor';
+
+import { getConnectionAdjustment as getConnectionAnchorPoint } from './util/ConnectionLayoutUtil';
+
+/**
+ * @typedef {import('diagram-js/lib/core/EventBus').default} EventBus
+ * @typedef {import('../Modeling').default} Modeling
+ */
+
+/**
+ * A component that makes sure that Associations connected to Connections
+ * are updated together with the Connection.
+ *
+ * @param {EventBus} eventBus
+ * @param {Modeling} modeling
+ */
+export default function LayoutConnectionBehavior(eventBus, modeling) {
+
+  CommandInterceptor.call(this, eventBus);
+
+  function getnewAnchorPoint(event, point) {
+
+    var context = event.context,
+        connection = context.connection,
+        hints = assign({}, context.hints),
+        newWaypoints = context.newWaypoints || connection.waypoints,
+        oldWaypoints = context.oldWaypoints;
+
+
+    if (typeof hints.startChanged === 'undefined') {
+      hints.startChanged = !!hints.connectionStart;
+    }
+
+    if (typeof hints.endChanged === 'undefined') {
+      hints.endChanged = !!hints.connectionEnd;
+    }
+
+    return getConnectionAnchorPoint(point, newWaypoints, oldWaypoints, hints);
+  }
+
+  this.postExecute([
+    'connection.layout',
+    'connection.updateWaypoints'
+  ], function(event) {
+    var context = event.context;
+
+    var connection = context.connection,
+        outgoing = connection.outgoing,
+        incoming = connection.incoming;
+
+    incoming.forEach(function(connection) {
+      var endPoint = connection.waypoints[connection.waypoints.length - 1];
+      var newEndpoint = getnewAnchorPoint(event, endPoint);
+
+      var newWaypoints = [].concat(connection.waypoints.slice(0, -1), [ newEndpoint ]);
+
+      modeling.updateWaypoints(connection, newWaypoints);
+    });
+
+    outgoing.forEach(function(connection) {
+      var startpoint = connection.waypoints[0];
+      var newStartpoint = getnewAnchorPoint(event, startpoint);
+
+      var newWaypoints = [].concat([ newStartpoint ], connection.waypoints.slice(1));
+
+      modeling.updateWaypoints(connection, newWaypoints);
+    });
+
+  });
+
+
+  this.postExecute([
+    'connection.move'
+  ], function(event) {
+    var context = event.context;
+
+    var connection = context.connection,
+        outgoing = connection.outgoing,
+        incoming = connection.incoming,
+        delta = context.delta;
+
+    incoming.forEach(function(connection) {
+      var endPoint = connection.waypoints[connection.waypoints.length - 1];
+      var newEndpoint = {
+        x: endPoint.x + delta.x,
+        y: endPoint.y + delta.y
+      };
+
+      var newWaypoints = [].concat(connection.waypoints.slice(0, -1), [ newEndpoint ]);
+
+      modeling.updateWaypoints(connection, newWaypoints);
+    });
+
+    outgoing.forEach(function(connection) {
+      var startpoint = connection.waypoints[0];
+      var newStartpoint = {
+        x: startpoint.x + delta.x,
+        y: startpoint.y + delta.y
+      };
+
+      var newWaypoints = [].concat([ newStartpoint ], connection.waypoints.slice(1));
+
+      modeling.updateWaypoints(connection, newWaypoints);
+    });
+
+  });
+
+}
+
+inherits(LayoutConnectionBehavior, CommandInterceptor);
+
+LayoutConnectionBehavior.$inject = [
+  'eventBus',
+  'modeling'
+];

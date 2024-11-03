@@ -1,1 +1,33 @@
-define(["../var/document","../var/support"],(function(e,t){"use strict";var a,c;return a=e.createElement("input"),c=e.createElement("select").appendChild(e.createElement("option")),a.type="checkbox",t.checkOn=""!==a.value,t.optSelected=c.selected,(a=e.createElement("input")).value="t",a.type="radio",t.radioValue="t"===a.value,t}));
+define( [
+	"../var/document",
+	"../var/support"
+], function( document, support ) {
+
+"use strict";
+
+( function() {
+	var input = document.createElement( "input" ),
+		select = document.createElement( "select" ),
+		opt = select.appendChild( document.createElement( "option" ) );
+
+	input.type = "checkbox";
+
+	// Support: Android <=4.3 only
+	// Default value for a checkbox should be "on"
+	support.checkOn = input.value !== "";
+
+	// Support: IE <=11 only
+	// Must access selectedIndex to make default options select
+	support.optSelected = opt.selected;
+
+	// Support: IE <=11 only
+	// An input loses its value after becoming a radio
+	input = document.createElement( "input" );
+	input.value = "t";
+	input.type = "radio";
+	support.radioValue = input.value === "t";
+} )();
+
+return support;
+
+} );

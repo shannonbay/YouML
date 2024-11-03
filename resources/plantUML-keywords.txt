@@ -1,0 +1,91 @@
+participant
+actor
+boundary
+control
+entity
+database
+collections
+queue
+activate
+deactivate
+destroy
+alt
+opt
+loop 1000 times // sequence only
+par
+break
+critical
+group
+note left
+note right
+note over // sequence only
+end
+@enduml
+@startuml
+usecase
+interface
+component
+start
+end
+state
+artifact
+@startjson
+@endjson
+@startyaml
+@endyaml
+@startnwdiag
+@endnwdiag
+@startwireframe
+@endwireframe
+skinparam
+hide
+show
+create
+return
+autonumber
+header
+footer
+title
+newpage
+ref
+delay
+package
+rectangle
+abstract
+annotation
+circle
+class
+diamond
+enum
+exception
+metaclass
+protocol
+stereotype
+struct
+object
+abstract class
+actorStyle
+left to right direction
+top to bottom direction
+box
+end box
+include
+extends
+note
+json
+uml
+direction
+order
+collections
+queue
+divider
+rnote
+hnote
+skinparam class
+skinparam sequence
+skinparam backgroundColor
+destroy <identifier>
+group <group_label>
+message <identifier> ("->" | "-->") <identifier> [":" <message_text>]
+class <identifier> ["{" <class_body> "}"]
+usecase

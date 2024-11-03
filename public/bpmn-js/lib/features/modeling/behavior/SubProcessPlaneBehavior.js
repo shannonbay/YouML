@@ -1,1 +1,588 @@
-import inherits from"inherits-browser";import CommandInterceptor from"diagram-js/lib/command/CommandInterceptor";import{find}from"min-dash";import{isExpanded}from"../../../util/DiUtil";import{getBusinessObject,getDi,is}from"../../../util/ModelUtil";import{getMid}from"diagram-js/lib/layout/LayoutUtil";import{getBBox}from"diagram-js/lib/util/Elements";import{getPlaneIdFromShape,getShapeIdFromPlane,isPlane,toPlaneId}from"../../../util/DrilldownUtil";var LOW_PRIORITY=400,HIGH_PRIORITY=600,DEFAULT_POSITION={x:180,y:160};export default function SubProcessPlaneBehavior(e,t,n,i,r,a,o){CommandInterceptor.call(this,t),this._canvas=e,this._eventBus=t,this._modeling=n,this._elementFactory=i,this._bpmnFactory=r,this._bpmnjs=a,this._elementRegistry=o;var s=this;function l(e){return is(e,"bpmn:SubProcess")&&!isExpanded(e)}function d(t){var n=t.shape,i=t.newRootElement,r=getBusinessObject(n);i=s._addDiagram(i||r),t.newRootElement=e.addRootElement(i)}function p(t){var n=t.shape,i=getBusinessObject(n);s._removeDiagram(i);var r=t.newRootElement=o.get(getPlaneIdFromShape(i));e.removeRootElement(r)}this.executed("shape.create",(function(e){l(e.shape)&&d(e)}),!0),this.postExecuted("shape.create",(function(e){var t=e.shape,n=e.newRootElement;n&&t.children&&(s._showRecursively(t.children),s._moveChildrenToShape(t,n))}),!0),this.reverted("shape.create",(function(e){l(e.shape)&&p(e)}),!0),this.preExecuted("shape.delete",(function(e){var t=e.shape;if(l(t)){var i=o.get(getPlaneIdFromShape(t));i&&n.removeElements(i.children.slice())}}),!0),this.executed("shape.delete",(function(e){l(e.shape)&&p(e)}),!0),this.reverted("shape.delete",(function(e){l(e.shape)&&d(e)}),!0),this.preExecuted("shape.replace",(function(t){var n=t.oldShape,i=t.newShape;l(n)&&l(i)&&(t.oldRoot=e.removeRootElement(getPlaneIdFromShape(n)))}),!0),this.postExecuted("shape.replace",(function(t){var i=t.newShape,r=t.oldRoot,a=e.findRoot(getPlaneIdFromShape(i));if(r&&a){var o=r.children;n.moveElements(o,{x:0,y:0},a)}}),!0),this.executed("element.updateProperties",(function(e){var t=e.element;if(is(t,"bpmn:SubProcess")){var n=e.properties,i=e.oldProperties.id,r=n.id;if(i!==r){if(isPlane(t))return o.updateId(t,toPlaneId(r)),void o.updateId(i,r);o.get(toPlaneId(i))&&o.updateId(toPlaneId(i),toPlaneId(r))}}}),!0),this.reverted("element.updateProperties",(function(e){var t=e.element;if(is(t,"bpmn:SubProcess")){var n=e.properties,i=e.oldProperties.id,r=n.id;if(i!==r){if(isPlane(t))return o.updateId(t,toPlaneId(i)),void o.updateId(r,i);var a=o.get(toPlaneId(r));a&&o.updateId(a,toPlaneId(i))}}}),!0),t.on("element.changed",(function(e){var n=e.element;if(isPlane(n)){var i=n,r=o.get(getShapeIdFromPlane(i));r&&r!==i&&t.fire("element.changed",{element:r})}})),this.executed("shape.toggleCollapse",LOW_PRIORITY,(function(e){var t=e.shape;is(t,"bpmn:SubProcess")&&(isExpanded(t)?p(e):(d(e),s._showRecursively(t.children)))}),!0),this.reverted("shape.toggleCollapse",LOW_PRIORITY,(function(e){var t=e.shape;is(t,"bpmn:SubProcess")&&(isExpanded(t)?p(e):(d(e),s._showRecursively(t.children)))}),!0),this.postExecuted("shape.toggleCollapse",HIGH_PRIORITY,(function(e){var t=e.shape;if(is(t,"bpmn:SubProcess")){var n=e.newRootElement;n&&(isExpanded(t)?s._moveChildrenToShape(n,t):s._moveChildrenToShape(t,n))}}),!0),t.on("copyPaste.createTree",(function(e){var t=e.element,n=e.children;if(l(t)){var i=getPlaneIdFromShape(t),r=o.get(i);r&&n.push.apply(n,r.children)}})),t.on("copyPaste.copyElement",(function(e){var t=e.descriptor,n=e.element,i=e.elements,r=n.parent;if(is(getDi(r),"bpmndi:BPMNPlane")){var a=getShapeIdFromPlane(r),o=find(i,(function(e){return e.id===a}));o&&(t.parent=o.id)}})),t.on("copyPaste.pasteElement",(function(e){var t=e.descriptor;t.parent&&(l(t.parent)||t.parent.hidden)&&(t.hidden=!0)}))}inherits(SubProcessPlaneBehavior,CommandInterceptor),SubProcessPlaneBehavior.prototype._moveChildrenToShape=function(e,t){var n,i=this._modeling,r=e.children;if(r){var a=(r=r.concat(r.reduce((function(t,n){return n.label&&n.label.parent!==e?t.concat(n.label):t}),[]))).filter((function(e){return!e.hidden}));if(a.length){var o=getBBox(a);if(t.x){var s=getMid(t),l=getMid(o);n={x:s.x-l.x,y:s.y-l.y}}else n={x:DEFAULT_POSITION.x-o.x,y:DEFAULT_POSITION.y-o.y};i.moveElements(r,n,t,{autoResize:!1})}else i.moveElements(r,{x:0,y:0},t,{autoResize:!1})}},SubProcessPlaneBehavior.prototype._showRecursively=function(e,t){var n=this,i=[];return e.forEach((function(e){e.hidden=!!t,i=i.concat(e),e.children&&(i=i.concat(n._showRecursively(e.children,e.collapsed||t)))})),i},SubProcessPlaneBehavior.prototype._addDiagram=function(e){var t=this._bpmnjs.getDefinitions().diagrams;return e.businessObject||(e=this._createNewDiagram(e)),t.push(e.di.$parent),e},SubProcessPlaneBehavior.prototype._createNewDiagram=function(e){var t=this._bpmnFactory,n=this._elementFactory,i=t.create("bpmndi:BPMNPlane",{bpmnElement:e}),r=t.create("bpmndi:BPMNDiagram",{plane:i});return i.$parent=r,n.createRoot({id:getPlaneIdFromShape(e),type:e.$type,di:i,businessObject:e,collapsed:!0})},SubProcessPlaneBehavior.prototype._removeDiagram=function(e){var t=this._bpmnjs.getDefinitions().diagrams,n=find(t,(function(t){return t.plane.bpmnElement.id===e.id}));return t.splice(t.indexOf(n),1),n},SubProcessPlaneBehavior.$inject=["canvas","eventBus","modeling","elementFactory","bpmnFactory","bpmnjs","elementRegistry"];
+import inherits from 'inherits-browser';
+
+import CommandInterceptor from 'diagram-js/lib/command/CommandInterceptor';
+
+import { find } from 'min-dash';
+
+import { isExpanded } from '../../../util/DiUtil';
+
+import { getBusinessObject, getDi, is } from '../../../util/ModelUtil';
+
+import { getMid } from 'diagram-js/lib/layout/LayoutUtil';
+
+import { getBBox } from 'diagram-js/lib/util/Elements';
+
+import {
+  getPlaneIdFromShape,
+  getShapeIdFromPlane,
+  isPlane,
+  toPlaneId
+} from '../../../util/DrilldownUtil';
+
+/**
+ * @typedef {import('diagram-js/lib/core/Canvas').default} Canvas
+ * @typedef {import('diagram-js/lib/core/EventBus').default} EventBus
+ * @typedef {import('../Modeling').default} Modeling
+ * @typedef {import('../ElementFactory').default} ElementFactory
+ * @typedef {import('../BpmnFactory').default} BpmnFactory
+ * @typedef {import('../../../Modeler').default} Modeler
+ * @typedef {import('diagram-js/lib/core/ElementRegistry').default} ElementRegistry
+ *
+ * @typedef {import('../../../model/Types').Element} Element
+ * @typedef {import('../../../model/Types').Root} Root
+ * @typedef {import('../../../model/Types').ModdleElement} ModdleElement
+ */
+
+var LOW_PRIORITY = 400;
+var HIGH_PRIORITY = 600;
+
+var DEFAULT_POSITION = {
+  x: 180,
+  y: 160
+};
+
+
+/**
+ * Creates bpmndi:BPMNPlane elements and canvas planes when collapsed subprocesses are created.
+ *
+ * @param {Canvas} canvas
+ * @param {EventBus} eventBus
+ * @param {Modeling} modeling
+ * @param {ElementFactory} elementFactory
+ * @param {BpmnFactory} bpmnFactory
+ * @param {Modeler} bpmnjs
+ * @param {ElementRegistry} elementRegistry
+ */
+export default function SubProcessPlaneBehavior(
+    canvas, eventBus, modeling,
+    elementFactory, bpmnFactory, bpmnjs, elementRegistry) {
+
+  CommandInterceptor.call(this, eventBus);
+
+  this._canvas = canvas;
+  this._eventBus = eventBus;
+  this._modeling = modeling;
+  this._elementFactory = elementFactory;
+  this._bpmnFactory = bpmnFactory;
+  this._bpmnjs = bpmnjs;
+  this._elementRegistry = elementRegistry;
+
+  var self = this;
+
+  function isCollapsedSubProcess(element) {
+    return is(element, 'bpmn:SubProcess') && !isExpanded(element);
+  }
+
+  function createRoot(context) {
+    var shape = context.shape,
+        rootElement = context.newRootElement;
+
+    var businessObject = getBusinessObject(shape);
+
+    rootElement = self._addDiagram(rootElement || businessObject);
+
+    context.newRootElement = canvas.addRootElement(rootElement);
+  }
+
+  function removeRoot(context) {
+    var shape = context.shape;
+
+    var businessObject = getBusinessObject(shape);
+    self._removeDiagram(businessObject);
+
+    var rootElement = context.newRootElement = elementRegistry.get(getPlaneIdFromShape(businessObject));
+
+    canvas.removeRootElement(rootElement);
+  }
+
+  // add plane elements for newly created sub-processes
+  // this ensures we can actually drill down into the element
+  this.executed('shape.create', function(context) {
+    var shape = context.shape;
+    if (!isCollapsedSubProcess(shape)) {
+      return;
+    }
+
+    createRoot(context);
+  }, true);
+
+
+  this.postExecuted('shape.create', function(context) {
+    var shape = context.shape,
+        rootElement = context.newRootElement;
+
+    if (!rootElement || !shape.children) {
+      return;
+    }
+
+    self._showRecursively(shape.children);
+
+    self._moveChildrenToShape(shape, rootElement);
+  }, true);
+
+
+  this.reverted('shape.create', function(context) {
+    var shape = context.shape;
+    if (!isCollapsedSubProcess(shape)) {
+      return;
+    }
+
+    removeRoot(context);
+  }, true);
+
+
+  this.preExecuted('shape.delete', function(context) {
+    var shape = context.shape;
+    if (!isCollapsedSubProcess(shape)) {
+      return;
+    }
+
+    var attachedRoot = elementRegistry.get(getPlaneIdFromShape(shape));
+
+    if (!attachedRoot) {
+      return;
+    }
+
+    modeling.removeElements(attachedRoot.children.slice());
+  }, true);
+
+
+  this.executed('shape.delete', function(context) {
+    var shape = context.shape;
+    if (!isCollapsedSubProcess(shape)) {
+      return;
+    }
+    removeRoot(context);
+  }, true);
+
+
+  this.reverted('shape.delete', function(context) {
+    var shape = context.shape;
+    if (!isCollapsedSubProcess(shape)) {
+      return;
+    }
+
+    createRoot(context);
+  }, true);
+
+
+  this.preExecuted('shape.replace', function(context) {
+    var oldShape = context.oldShape;
+    var newShape = context.newShape;
+
+    if (!isCollapsedSubProcess(oldShape) || !isCollapsedSubProcess(newShape)) {
+      return;
+    }
+
+    // old plane could have content,
+    // we remove it so it is not recursively deleted from 'shape.delete'
+    context.oldRoot = canvas.removeRootElement(getPlaneIdFromShape(oldShape));
+  }, true);
+
+
+  this.postExecuted('shape.replace', function(context) {
+    var newShape = context.newShape,
+        source = context.oldRoot,
+        target = canvas.findRoot(getPlaneIdFromShape(newShape));
+
+    if (!source || !target) {
+      return;
+    }
+    var elements = source.children;
+
+    modeling.moveElements(elements, { x: 0, y: 0 }, target);
+  }, true);
+
+
+  // rename primary elements when the secondary element changes
+  // this ensures rootElement.id = element.id + '_plane'
+  this.executed('element.updateProperties', function(context) {
+    var shape = context.element;
+
+    if (!is(shape, 'bpmn:SubProcess')) {
+      return;
+    }
+
+    var properties = context.properties;
+    var oldProperties = context.oldProperties;
+
+    var oldId = oldProperties.id,
+        newId = properties.id;
+
+    if (oldId === newId) {
+      return;
+    }
+
+    if (isPlane(shape)) {
+      elementRegistry.updateId(shape, toPlaneId(newId));
+      elementRegistry.updateId(oldId, newId);
+
+      return;
+    }
+
+    var planeElement = elementRegistry.get(toPlaneId(oldId));
+
+    if (!planeElement) {
+      return;
+    }
+
+    elementRegistry.updateId(toPlaneId(oldId), toPlaneId(newId));
+  }, true);
+
+
+  this.reverted('element.updateProperties', function(context) {
+    var shape = context.element;
+
+    if (!is(shape, 'bpmn:SubProcess')) {
+      return;
+    }
+
+    var properties = context.properties;
+    var oldProperties = context.oldProperties;
+
+    var oldId = oldProperties.id,
+        newId = properties.id;
+
+    if (oldId === newId) {
+      return;
+    }
+
+    if (isPlane(shape)) {
+      elementRegistry.updateId(shape, toPlaneId(oldId));
+      elementRegistry.updateId(newId, oldId);
+
+      return;
+    }
+
+    var planeElement = elementRegistry.get(toPlaneId(newId));
+
+    if (!planeElement) {
+      return;
+    }
+
+    elementRegistry.updateId(planeElement, toPlaneId(oldId));
+  }, true);
+
+  // re-throw element.changed to re-render primary shape if associated plane has
+  // changed (e.g. bpmn:name property has changed)
+  eventBus.on('element.changed', function(context) {
+    var element = context.element;
+
+    if (!isPlane(element)) {
+      return;
+    }
+
+    var plane = element;
+
+    var primaryShape = elementRegistry.get(getShapeIdFromPlane(plane));
+
+    // do not re-throw if no associated primary shape (e.g. bpmn:Process)
+    if (!primaryShape || primaryShape === plane) {
+      return;
+    }
+
+    eventBus.fire('element.changed', { element: primaryShape });
+  });
+
+
+  // create/remove plane for the subprocess
+  this.executed('shape.toggleCollapse', LOW_PRIORITY, function(context) {
+    var shape = context.shape;
+
+    if (!is(shape, 'bpmn:SubProcess')) {
+      return;
+    }
+
+    if (!isExpanded(shape)) {
+      createRoot(context);
+      self._showRecursively(shape.children);
+    } else {
+      removeRoot(context);
+    }
+
+  }, true);
+
+
+  // create/remove plane for the subprocess
+  this.reverted('shape.toggleCollapse', LOW_PRIORITY, function(context) {
+    var shape = context.shape;
+
+    if (!is(shape, 'bpmn:SubProcess')) {
+      return;
+    }
+
+    if (!isExpanded(shape)) {
+      createRoot(context);
+      self._showRecursively(shape.children);
+    } else {
+      removeRoot(context);
+    }
+
+  }, true);
+
+  // move elements between planes
+  this.postExecuted('shape.toggleCollapse', HIGH_PRIORITY, function(context) {
+    var shape = context.shape;
+
+    if (!is(shape, 'bpmn:SubProcess')) {
+      return;
+    }
+
+    var rootElement = context.newRootElement;
+
+    if (!rootElement) {
+      return;
+    }
+
+    if (!isExpanded(shape)) {
+
+      // collapsed
+      self._moveChildrenToShape(shape, rootElement);
+
+    } else {
+      self._moveChildrenToShape(rootElement, shape);
+    }
+  }, true);
+
+
+  // copy-paste ///////////
+
+  // add elements in plane to tree
+  eventBus.on('copyPaste.createTree', function(context) {
+    var element = context.element,
+        children = context.children;
+
+    if (!isCollapsedSubProcess(element)) {
+      return;
+    }
+
+    var id = getPlaneIdFromShape(element);
+    var parent = elementRegistry.get(id);
+
+    if (parent) {
+
+      // do not copy invisible root element
+      children.push.apply(children, parent.children);
+    }
+  });
+
+  // set plane children as direct children of collapsed shape
+  eventBus.on('copyPaste.copyElement', function(context) {
+    var descriptor = context.descriptor,
+        element = context.element,
+        elements = context.elements;
+
+    var parent = element.parent;
+
+    var isPlane = is(getDi(parent), 'bpmndi:BPMNPlane');
+    if (!isPlane) {
+      return;
+    }
+
+    var parentId = getShapeIdFromPlane(parent);
+
+    var referencedShape = find(elements, function(element) {
+      return element.id === parentId;
+    });
+
+    if (!referencedShape) {
+      return;
+    }
+
+    descriptor.parent = referencedShape.id;
+  });
+
+  // hide children during pasting
+  eventBus.on('copyPaste.pasteElement', function(context) {
+    var descriptor = context.descriptor;
+
+    if (!descriptor.parent) {
+      return;
+    }
+
+    if (isCollapsedSubProcess(descriptor.parent) || descriptor.parent.hidden) {
+      descriptor.hidden = true;
+    }
+  });
+
+}
+
+inherits(SubProcessPlaneBehavior, CommandInterceptor);
+
+/**
+ * Moves the child elements from source to target.
+ *
+ * If the target is a plane, the children are moved to the top left corner.
+ * Otherwise, the center of the target is used.
+ *
+ * @param {Root} source
+ * @param {Root} target
+ */
+SubProcessPlaneBehavior.prototype._moveChildrenToShape = function(source, target) {
+  var modeling = this._modeling;
+
+  var children = source.children;
+  var offset;
+
+  if (!children) {
+    return;
+  }
+
+  // add external labels that weren't children of sub process
+  children = children.concat(children.reduce(function(labels, child) {
+    if (child.label && child.label.parent !== source) {
+      return labels.concat(child.label);
+    }
+
+    return labels;
+  }, []));
+
+  // only change plane if there are no visible children, but don't move them
+  var visibleChildren = children.filter(function(child) {
+    return !child.hidden;
+  });
+
+  if (!visibleChildren.length) {
+    modeling.moveElements(children, { x: 0, y: 0 }, target, { autoResize: false });
+    return;
+  }
+
+  var childrenBounds = getBBox(visibleChildren);
+
+  // target is a plane
+  if (!target.x) {
+    offset = {
+      x: DEFAULT_POSITION.x - childrenBounds.x,
+      y: DEFAULT_POSITION.y - childrenBounds.y
+    };
+  }
+
+  // source is a plane
+  else {
+
+    // move relative to the center of the shape
+    var targetMid = getMid(target);
+    var childrenMid = getMid(childrenBounds);
+
+    offset = {
+      x: targetMid.x - childrenMid.x,
+      y: targetMid.y - childrenMid.y
+    };
+  }
+
+  modeling.moveElements(children, offset, target, { autoResize: false });
+};
+
+/**
+ * Sets `hidden` property on all children of the given shape.
+ *
+ * @param {Element[]} elements
+ * @param {boolean} [hidden=false]
+ *
+ * @return {Element[]}
+ */
+SubProcessPlaneBehavior.prototype._showRecursively = function(elements, hidden) {
+  var self = this;
+
+  var result = [];
+  elements.forEach(function(element) {
+    element.hidden = !!hidden;
+
+    result = result.concat(element);
+
+    if (element.children) {
+      result = result.concat(
+        self._showRecursively(element.children, element.collapsed || hidden)
+      );
+    }
+  });
+
+  return result;
+};
+
+/**
+ * Adds a given root element to the BPMNDI diagrams.
+ *
+ * @param {Root|ModdleElement} planeElement
+ *
+ * @return {Root}
+ */
+SubProcessPlaneBehavior.prototype._addDiagram = function(planeElement) {
+  var bpmnjs = this._bpmnjs;
+  var diagrams = bpmnjs.getDefinitions().diagrams;
+
+  if (!planeElement.businessObject) {
+    planeElement = this._createNewDiagram(planeElement);
+  }
+
+  diagrams.push(planeElement.di.$parent);
+
+  return planeElement;
+};
+
+
+/**
+ * Creates a new plane element for the given sub process.
+ *
+ * @param {ModdleElement} bpmnElement
+ *
+ * @return {Root}
+ */
+SubProcessPlaneBehavior.prototype._createNewDiagram = function(bpmnElement) {
+  var bpmnFactory = this._bpmnFactory,
+      elementFactory = this._elementFactory;
+
+  var diPlane = bpmnFactory.create('bpmndi:BPMNPlane', {
+    bpmnElement: bpmnElement
+  });
+
+  var diDiagram = bpmnFactory.create('bpmndi:BPMNDiagram', {
+    plane: diPlane
+  });
+
+  diPlane.$parent = diDiagram;
+
+  // add a virtual element (not being drawn),
+  // a copy cat of our BpmnImporter code
+  var planeElement = elementFactory.createRoot({
+    id: getPlaneIdFromShape(bpmnElement),
+    type: bpmnElement.$type,
+    di: diPlane,
+    businessObject: bpmnElement,
+    collapsed: true
+  });
+
+  return planeElement;
+};
+
+/**
+ * Removes the diagram for a given root element.
+ *
+ * @param {Root} rootElement
+ *
+ * @return {ModdleElement}
+ */
+SubProcessPlaneBehavior.prototype._removeDiagram = function(rootElement) {
+  var bpmnjs = this._bpmnjs;
+
+  var diagrams = bpmnjs.getDefinitions().diagrams;
+
+  var removedDiagram = find(diagrams, function(diagram) {
+    return diagram.plane.bpmnElement.id === rootElement.id;
+  });
+
+  diagrams.splice(diagrams.indexOf(removedDiagram), 1);
+
+  return removedDiagram;
+};
+
+
+SubProcessPlaneBehavior.$inject = [
+  'canvas',
+  'eventBus',
+  'modeling',
+  'elementFactory',
+  'bpmnFactory',
+  'bpmnjs',
+  'elementRegistry'
+];

@@ -1,1 +1,100 @@
-import ICONS from"./AlignElementsIcons";import{assign,forEach}from"min-dash";var ALIGNMENT_OPTIONS=["left","center","right","top","middle","bottom"];export default function AlignElementsMenuProvider(e,t,n,i){this._alignElements=t,this._translate=n,this._popupMenu=e,this._rules=i,e.registerProvider("align-elements",this)}AlignElementsMenuProvider.$inject=["popupMenu","alignElements","translate","rules"],AlignElementsMenuProvider.prototype.getPopupMenuEntries=function(e){var t={};return this._isAllowed(e)&&assign(t,this._getEntries(e)),t},AlignElementsMenuProvider.prototype._isAllowed=function(e){return this._rules.allowed("elements.align",{elements:e})},AlignElementsMenuProvider.prototype._getEntries=function(e){var t=this._alignElements,n=this._translate,i=this._popupMenu,l={};return forEach(ALIGNMENT_OPTIONS,(function(r){l["align-elements-"+r]={group:"align",title:n("Align elements "+r),className:"bjs-align-elements-menu-entry",imageHtml:ICONS[r],action:function(){t.trigger(e,r),i.close()}}})),l};
+import ICONS from './AlignElementsIcons';
+
+import {
+  assign,
+  forEach,
+} from 'min-dash';
+
+/**
+ * @typedef {import('diagram-js/lib/features/align-elements/AlignElements').default} AlignElements
+ * @typedef {import('diagram-js/lib/features/popup-menu/PopupMenu').default} PopupMenu
+ * @typedef {import('diagram-js/lib/features/rules/Rules').default} Rules
+ * @typedef {import('diagram-js/lib/i18n/translate/translate').default} Translate
+ *
+ * @typedef {import('diagram-js/lib/features/popup-menu/PopupMenu').PopupMenuEntries} PopupMenuEntries
+ * @typedef {import('diagram-js/lib/features/popup-menu/PopupMenuProvider').default} PopupMenuProvider
+ * @typedef {import('diagram-js/lib/features/popup-menu/PopupMenu').PopupMenuTarget} PopupMenuTarget
+ */
+
+var ALIGNMENT_OPTIONS = [
+  'left',
+  'center',
+  'right',
+  'top',
+  'middle',
+  'bottom'
+];
+
+/**
+ * A provider for the `Align elements` popup menu.
+ *
+ * @implements {PopupMenuProvider}
+ *
+ * @param {PopupMenu} popupMenu
+ * @param {AlignElements} alignElements
+ * @param {Translate} translate
+ * @param {Rules} rules
+ */
+export default function AlignElementsMenuProvider(popupMenu, alignElements, translate, rules) {
+
+  this._alignElements = alignElements;
+  this._translate = translate;
+  this._popupMenu = popupMenu;
+  this._rules = rules;
+
+  popupMenu.registerProvider('align-elements', this);
+}
+
+AlignElementsMenuProvider.$inject = [
+  'popupMenu',
+  'alignElements',
+  'translate',
+  'rules'
+];
+
+/**
+ * @param {PopupMenuTarget} target
+ *
+ * @return {PopupMenuEntries}
+ */
+AlignElementsMenuProvider.prototype.getPopupMenuEntries = function(target) {
+  var entries = {};
+
+  if (this._isAllowed(target)) {
+    assign(entries, this._getEntries(target));
+  }
+
+  return entries;
+};
+
+AlignElementsMenuProvider.prototype._isAllowed = function(target) {
+  return this._rules.allowed('elements.align', { elements: target });
+};
+
+/**
+ * @param {PopupMenuTarget} target
+ *
+ * @return {PopupMenuEntries}
+ */
+AlignElementsMenuProvider.prototype._getEntries = function(target) {
+  var alignElements = this._alignElements,
+      translate = this._translate,
+      popupMenu = this._popupMenu;
+
+  var entries = {};
+
+  forEach(ALIGNMENT_OPTIONS, function(alignment) {
+    entries[ 'align-elements-' + alignment ] = {
+      group: 'align',
+      title: translate('Align elements ' + alignment),
+      className: 'bjs-align-elements-menu-entry',
+      imageHtml: ICONS[ alignment ],
+      action: function() {
+        alignElements.trigger(target, alignment);
+        popupMenu.close();
+      }
+    };
+  });
+
+  return entries;
+};

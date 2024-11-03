@@ -1,1 +1,97 @@
-define(["../core","../var/indexOf","../var/isFunction","./var/rneedsContext","../selector"],(function(t,n,e,r){"use strict";function i(r,i,u){return e(i)?t.grep(r,(function(t,n){return!!i.call(t,n,t)!==u})):i.nodeType?t.grep(r,(function(t){return t===i!==u})):"string"!=typeof i?t.grep(r,(function(t){return n.call(i,t)>-1!==u})):t.filter(i,r,u)}t.filter=function(n,e,r){var i=e[0];return r&&(n=":not("+n+")"),1===e.length&&1===i.nodeType?t.find.matchesSelector(i,n)?[i]:[]:t.find.matches(n,t.grep(e,(function(t){return 1===t.nodeType})))},t.fn.extend({find:function(n){var e,r,i=this.length,u=this;if("string"!=typeof n)return this.pushStack(t(n).filter((function(){for(e=0;e<i;e++)if(t.contains(u[e],this))return!0})));for(r=this.pushStack([]),e=0;e<i;e++)t.find(n,u[e],r);return i>1?t.uniqueSort(r):r},filter:function(t){return this.pushStack(i(this,t||[],!1))},not:function(t){return this.pushStack(i(this,t||[],!0))},is:function(n){return!!i(this,"string"==typeof n&&r.test(n)?t(n):n||[],!1).length}})}));
+define( [
+	"../core",
+	"../var/indexOf",
+	"../var/isFunction",
+	"./var/rneedsContext",
+	"../selector"
+], function( jQuery, indexOf, isFunction, rneedsContext ) {
+
+"use strict";
+
+// Implement the identical functionality for filter and not
+function winnow( elements, qualifier, not ) {
+	if ( isFunction( qualifier ) ) {
+		return jQuery.grep( elements, function( elem, i ) {
+			return !!qualifier.call( elem, i, elem ) !== not;
+		} );
+	}
+
+	// Single element
+	if ( qualifier.nodeType ) {
+		return jQuery.grep( elements, function( elem ) {
+			return ( elem === qualifier ) !== not;
+		} );
+	}
+
+	// Arraylike of elements (jQuery, arguments, Array)
+	if ( typeof qualifier !== "string" ) {
+		return jQuery.grep( elements, function( elem ) {
+			return ( indexOf.call( qualifier, elem ) > -1 ) !== not;
+		} );
+	}
+
+	// Filtered directly for both simple and complex selectors
+	return jQuery.filter( qualifier, elements, not );
+}
+
+jQuery.filter = function( expr, elems, not ) {
+	var elem = elems[ 0 ];
+
+	if ( not ) {
+		expr = ":not(" + expr + ")";
+	}
+
+	if ( elems.length === 1 && elem.nodeType === 1 ) {
+		return jQuery.find.matchesSelector( elem, expr ) ? [ elem ] : [];
+	}
+
+	return jQuery.find.matches( expr, jQuery.grep( elems, function( elem ) {
+		return elem.nodeType === 1;
+	} ) );
+};
+
+jQuery.fn.extend( {
+	find: function( selector ) {
+		var i, ret,
+			len = this.length,
+			self = this;
+
+		if ( typeof selector !== "string" ) {
+			return this.pushStack( jQuery( selector ).filter( function() {
+				for ( i = 0; i < len; i++ ) {
+					if ( jQuery.contains( self[ i ], this ) ) {
+						return true;
+					}
+				}
+			} ) );
+		}
+
+		ret = this.pushStack( [] );
+
+		for ( i = 0; i < len; i++ ) {
+			jQuery.find( selector, self[ i ], ret );
+		}
+
+		return len > 1 ? jQuery.uniqueSort( ret ) : ret;
+	},
+	filter: function( selector ) {
+		return this.pushStack( winnow( this, selector || [], false ) );
+	},
+	not: function( selector ) {
+		return this.pushStack( winnow( this, selector || [], true ) );
+	},
+	is: function( selector ) {
+		return !!winnow(
+			this,
+
+			// If this is a positional/relative selector, check membership in the returned set
+			// so $("p:first").is("p:last") won't return true for a doc with two "p".
+			typeof selector === "string" && rneedsContext.test( selector ) ?
+				jQuery( selector ) :
+				selector || [],
+			false
+		).length;
+	}
+} );
+
+} );

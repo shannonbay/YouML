@@ -1,1 +1,7 @@
-export function elementToString(e){return e?"<"+e.$type+(e.id?' id="'+e.id:"")+'" />':"<null>"}
+export function elementToString(e) {
+  if (!e) {
+    return '<null>';
+  }
+
+  return '<' + e.$type + (e.id ? ' id="' + e.id : '') + '" />';
+}

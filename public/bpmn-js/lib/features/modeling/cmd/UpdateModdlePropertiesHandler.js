@@ -1,1 +1,107 @@
-import{reduce,keys,forEach}from"min-dash";import{is,getBusinessObject}from"../../../util/ModelUtil";export default function UpdateModdlePropertiesHandler(e){this._elementRegistry=e}function getModdleProperties(e,t){return reduce(t,(function(t,r){return t[r]=e.get(r),t}),{})}function setModdleProperties(e,t){forEach(t,(function(t,r){e.set(r,t)}))}function getAllDataObjectReferences(e,t){return t.filter((function(t){return is(t,"bpmn:DataObjectReference")&&getBusinessObject(t).dataObjectRef===e}))}UpdateModdlePropertiesHandler.$inject=["elementRegistry"],UpdateModdlePropertiesHandler.prototype.execute=function(e){var t=e.element,r=e.moddleElement,o=e.properties;if(!r)throw new Error("<moddleElement> required");var n=e.changed||this._getVisualReferences(r).concat(t),d=e.oldProperties||getModdleProperties(r,keys(o));return setModdleProperties(r,o),e.oldProperties=d,e.changed=n,n},UpdateModdlePropertiesHandler.prototype.revert=function(e){var t=e.oldProperties,r=e.moddleElement,o=e.changed;return setModdleProperties(r,t),o},UpdateModdlePropertiesHandler.prototype._getVisualReferences=function(e){var t=this._elementRegistry;return is(e,"bpmn:DataObject")?getAllDataObjectReferences(e,t):[]};
+import {
+  reduce,
+  keys,
+  forEach
+} from 'min-dash';
+
+import {
+  is,
+  getBusinessObject
+} from '../../../util/ModelUtil';
+
+/**
+ * @typedef {import('diagram-js/lib/command/CommandHandler').default} CommandHandler
+ *
+ * @typedef {import('diagram-js/lib/core/ElementRegistry').default} ElementRegistry
+ *
+ * @typedef {import('../../../model/Types').Shape} Shape
+ * @typedef {import('../../../model/Types').ModdleElement} ModdleElement
+ */
+
+/**
+ * @implements {CommandHandler}
+ *
+ * @param {ElementRegistry} elementRegistry
+ */
+export default function UpdateModdlePropertiesHandler(elementRegistry) {
+  this._elementRegistry = elementRegistry;
+}
+
+UpdateModdlePropertiesHandler.$inject = [ 'elementRegistry' ];
+
+UpdateModdlePropertiesHandler.prototype.execute = function(context) {
+
+  var element = context.element,
+      moddleElement = context.moddleElement,
+      properties = context.properties;
+
+  if (!moddleElement) {
+    throw new Error('<moddleElement> required');
+  }
+
+  // TODO(nikku): we need to ensure that ID properties
+  // are properly registered / unregistered via
+  // this._moddle.ids.assigned(id)
+  var changed = context.changed || this._getVisualReferences(moddleElement).concat(element);
+  var oldProperties = context.oldProperties || getModdleProperties(moddleElement, keys(properties));
+
+  setModdleProperties(moddleElement, properties);
+
+  context.oldProperties = oldProperties;
+  context.changed = changed;
+
+  return changed;
+};
+
+UpdateModdlePropertiesHandler.prototype.revert = function(context) {
+  var oldProperties = context.oldProperties,
+      moddleElement = context.moddleElement,
+      changed = context.changed;
+
+  setModdleProperties(moddleElement, oldProperties);
+
+  return changed;
+};
+
+/**
+ * Return visual references of given moddle element within the diagram.
+ *
+ * @param {ModdleElement} moddleElement
+ *
+ * @return {Shape[]}
+ */
+UpdateModdlePropertiesHandler.prototype._getVisualReferences = function(moddleElement) {
+
+  var elementRegistry = this._elementRegistry;
+
+  if (is(moddleElement, 'bpmn:DataObject')) {
+    return getAllDataObjectReferences(moddleElement, elementRegistry);
+  }
+
+  return [];
+};
+
+
+// helpers /////////////////
+
+function getModdleProperties(moddleElement, propertyNames) {
+  return reduce(propertyNames, function(result, key) {
+    result[key] = moddleElement.get(key);
+    return result;
+  }, {});
+}
+
+function setModdleProperties(moddleElement, properties) {
+  forEach(properties, function(value, key) {
+    moddleElement.set(key, value);
+  });
+}
+
+function getAllDataObjectReferences(dataObject, elementRegistry) {
+  return elementRegistry.filter(function(element) {
+    return (
+      is(element, 'bpmn:DataObjectReference') &&
+          getBusinessObject(element).dataObjectRef === dataObject
+    );
+  });
+}

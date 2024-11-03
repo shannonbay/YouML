@@ -1,1 +1,586 @@
-import{assign,forEach,isArray,every}from"min-dash";import{is}from"../../util/ModelUtil";import{isExpanded,isHorizontal,isEventSubProcess}from"../../util/DiUtil";import{isAny}from"../modeling/util/ModelingUtil";import{getChildLanes}from"../modeling/util/LaneUtil";import{hasPrimaryModifier}from"diagram-js/lib/util/Mouse";export default function ContextPadProvider(e,n,t,i,a,o,s,c,r,p,l,d,m){e=e||{},i.registerProvider(this),this._contextPad=i,this._modeling=a,this._elementFactory=o,this._connect=s,this._create=c,this._popupMenu=r,this._canvas=p,this._rules=l,this._translate=d,this._eventBus=t,this._appendPreview=m,!1!==e.autoPlace&&(this._autoPlace=n.get("autoPlace",!1)),t.on("create.end",250,(function(e){var n=e.context.shape;if(hasPrimaryModifier(e)&&i.isOpen(n)){var t=i.getEntries(n);t.replace&&t.replace.action.click(e,n)}})),t.on("contextPad.close",(function(){m.cleanUp()}))}function isEventType(e,n,t){var i=e.$instanceOf(n),a=!1,o=e.eventDefinitions||[];return forEach(o,(function(e){e.$type===t&&(a=!0)})),i&&a}ContextPadProvider.$inject=["config.contextPad","injector","eventBus","contextPad","modeling","elementFactory","connect","create","popupMenu","canvas","rules","translate","appendPreview"],ContextPadProvider.prototype.getMultiElementContextPadEntries=function(e){var n=this._modeling,t={};return this._isDeleteAllowed(e)&&assign(t,{delete:{group:"edit",className:"bpmn-icon-trash",title:this._translate("Delete"),action:{click:function(e,t){n.removeElements(t.slice())}}}}),t},ContextPadProvider.prototype._isDeleteAllowed=function(e){var n=this._rules.allowed("elements.delete",{elements:e});return isArray(n)?every(e,(e=>n.includes(e))):n},ContextPadProvider.prototype.getContextPadEntries=function(e){var n=this._contextPad,t=this._modeling,i=this._elementFactory,a=this._connect,o=this._create,s=this._popupMenu,c=this._autoPlace,r=this._translate,p=this._appendPreview,l={};if("label"===e.type)return this._isDeleteAllowed([e])&&assign(l,u()),l;var d=e.businessObject;function m(e,n){a.start(e,n)}function v(e,n){t.removeElements([n])}function u(){return{delete:{group:"edit",className:"bpmn-icon-trash",title:r("Delete"),action:{click:v}}}}function b(e,n,t,a){function s(n,t){var s=i.createShape(assign({type:e},a));o.start(n,s,{source:t})}var r=c?function(n,t){var o=i.createShape(assign({type:e},a));c.append(t,o)}:s,l=c?function(n,t){return p.create(t,e,a),()=>{p.cleanUp()}}:null;return{group:"model",className:n,title:t,action:{dragstart:s,click:r,hover:l}}}function g(e){return function(i,a){t.splitLane(a,e),n.open(a,!0)}}if(isAny(d,["bpmn:Lane","bpmn:Participant"])&&isExpanded(e)){var h=getChildLanes(e);assign(l,{"lane-insert-above":{group:"lane-insert-above",className:"bpmn-icon-lane-insert-above",title:r("Add lane above"),action:{click:function(e,n){t.addLane(n,"top")}}}}),h.length<2&&((isHorizontal(e)?e.height>=120:e.width>=120)&&assign(l,{"lane-divide-two":{group:"lane-divide",className:"bpmn-icon-lane-divide-two",title:r("Divide into two lanes"),action:{click:g(2)}}}),(isHorizontal(e)?e.height>=180:e.width>=180)&&assign(l,{"lane-divide-three":{group:"lane-divide",className:"bpmn-icon-lane-divide-three",title:r("Divide into three lanes"),action:{click:g(3)}}})),assign(l,{"lane-insert-below":{group:"lane-insert-below",className:"bpmn-icon-lane-insert-below",title:r("Add lane below"),action:{click:function(e,n){t.addLane(n,"bottom")}}}})}return is(d,"bpmn:FlowNode")&&(is(d,"bpmn:EventBasedGateway")?assign(l,{"append.receive-task":b("bpmn:ReceiveTask","bpmn-icon-receive-task",r("Append receive task")),"append.message-intermediate-event":b("bpmn:IntermediateCatchEvent","bpmn-icon-intermediate-event-catch-message",r("Append message intermediate catch event"),{eventDefinitionType:"bpmn:MessageEventDefinition"}),"append.timer-intermediate-event":b("bpmn:IntermediateCatchEvent","bpmn-icon-intermediate-event-catch-timer",r("Append timer intermediate catch event"),{eventDefinitionType:"bpmn:TimerEventDefinition"}),"append.condition-intermediate-event":b("bpmn:IntermediateCatchEvent","bpmn-icon-intermediate-event-catch-condition",r("Append conditional intermediate catch event"),{eventDefinitionType:"bpmn:ConditionalEventDefinition"}),"append.signal-intermediate-event":b("bpmn:IntermediateCatchEvent","bpmn-icon-intermediate-event-catch-signal",r("Append signal intermediate catch event"),{eventDefinitionType:"bpmn:SignalEventDefinition"})}):isEventType(d,"bpmn:BoundaryEvent","bpmn:CompensateEventDefinition")?assign(l,{"append.compensation-activity":b("bpmn:Task","bpmn-icon-task",r("Append compensation activity"),{isForCompensation:!0})}):is(d,"bpmn:EndEvent")||d.isForCompensation||isEventType(d,"bpmn:IntermediateThrowEvent","bpmn:LinkEventDefinition")||isEventSubProcess(d)||assign(l,{"append.end-event":b("bpmn:EndEvent","bpmn-icon-end-event-none",r("Append end event")),"append.gateway":b("bpmn:ExclusiveGateway","bpmn-icon-gateway-none",r("Append gateway")),"append.append-task":b("bpmn:Task","bpmn-icon-task",r("Append task")),"append.intermediate-event":b("bpmn:IntermediateThrowEvent","bpmn-icon-intermediate-event-none",r("Append intermediate/boundary event"))})),s.isEmpty(e,"bpmn-replace")||assign(l,{replace:{group:"edit",className:"bpmn-icon-screw-wrench",title:r("Change element"),action:{click:function(e,t){var i=assign(function(e){var t=n.getPad(e).html.getBoundingClientRect();return{x:t.left,y:t.bottom+5}}(t),{cursor:{x:e.x,y:e.y}});s.open(t,"bpmn-replace",i,{title:r("Change element"),width:300,search:!0})}}}}),is(d,"bpmn:SequenceFlow")&&assign(l,{"append.text-annotation":b("bpmn:TextAnnotation","bpmn-icon-text-annotation",r("Add text annotation"))}),isAny(d,["bpmn:FlowNode","bpmn:InteractionNode","bpmn:DataObjectReference","bpmn:DataStoreReference"])&&assign(l,{"append.text-annotation":b("bpmn:TextAnnotation","bpmn-icon-text-annotation",r("Add text annotation")),connect:{group:"connect",className:"bpmn-icon-connection-multi",title:r("Connect to other element"),action:{click:m,dragstart:m}}}),is(d,"bpmn:TextAnnotation")&&assign(l,{connect:{group:"connect",className:"bpmn-icon-connection-multi",title:r("Connect using association"),action:{click:m,dragstart:m}}}),isAny(d,["bpmn:DataObjectReference","bpmn:DataStoreReference"])&&assign(l,{connect:{group:"connect",className:"bpmn-icon-connection-multi",title:r("Connect using data input association"),action:{click:m,dragstart:m}}}),is(d,"bpmn:Group")&&assign(l,{"append.text-annotation":b("bpmn:TextAnnotation","bpmn-icon-text-annotation",r("Add text annotation"))}),this._isDeleteAllowed([e])&&assign(l,u()),l};
+import {
+  assign,
+  forEach,
+  isArray,
+  every
+} from 'min-dash';
+
+import {
+  is
+} from '../../util/ModelUtil';
+
+import {
+  isExpanded,
+  isHorizontal,
+  isEventSubProcess
+} from '../../util/DiUtil';
+
+import {
+  isAny
+} from '../modeling/util/ModelingUtil';
+
+import {
+  getChildLanes
+} from '../modeling/util/LaneUtil';
+
+import {
+  hasPrimaryModifier
+} from 'diagram-js/lib/util/Mouse';
+
+/**
+ * @typedef {import('didi').Injector} Injector
+ * @typedef {import('diagram-js/lib/core/EventBus').default} EventBus
+ * @typedef {import('diagram-js/lib/features/context-pad/ContextPad').default} ContextPad
+ * @typedef {import('../modeling/Modeling').default} Modeling
+ * @typedef {import('../modeling/ElementFactory').default} ElementFactory
+ * @typedef {import('../append-preview/AppendPreview').default} AppendPreview
+ * @typedef {import('diagram-js/lib/features/connect/Connect').default} Connect
+ * @typedef {import('diagram-js/lib/features/create/Create').default} Create
+ * @typedef {import('diagram-js/lib/features/popup-menu/PopupMenu').default} PopupMenu
+ * @typedef {import('diagram-js/lib/features/canvas/Canvas').default} Canvas
+ * @typedef {import('diagram-js/lib/features/rules/Rules').default} Rules
+ * @typedef {import('diagram-js/lib/i18n/translate/translate').default} Translate
+ *
+ * @typedef {import('../../model/Types').Element} Element
+ * @typedef {import('../../model/Types').ModdleElement} ModdleElement
+ *
+ * @typedef {import('diagram-js/lib/features/context-pad/ContextPadProvider').default<Element>} BaseContextPadProvider
+ * @typedef {import('diagram-js/lib/features/context-pad/ContextPadProvider').ContextPadEntries} ContextPadEntries
+ * @typedef {import('diagram-js/lib/features/context-pad/ContextPadProvider').ContextPadEntry} ContextPadEntry
+ *
+ * @typedef { { autoPlace?: boolean; } } ContextPadConfig
+ */
+
+/**
+ * BPMN-specific context pad provider.
+ *
+ * @implements {BaseContextPadProvider}
+ *
+ * @param {ContextPadConfig} config
+ * @param {Injector} injector
+ * @param {EventBus} eventBus
+ * @param {ContextPad} contextPad
+ * @param {Modeling} modeling
+ * @param {ElementFactory} elementFactory
+ * @param {Connect} connect
+ * @param {Create} create
+ * @param {PopupMenu} popupMenu
+ * @param {Canvas} canvas
+ * @param {Rules} rules
+ * @param {Translate} translate
+ * @param {AppendPreview} appendPreview
+ */
+export default function ContextPadProvider(
+    config, injector, eventBus,
+    contextPad, modeling, elementFactory,
+    connect, create, popupMenu,
+    canvas, rules, translate, appendPreview) {
+
+  config = config || {};
+
+  contextPad.registerProvider(this);
+
+  this._contextPad = contextPad;
+
+  this._modeling = modeling;
+
+  this._elementFactory = elementFactory;
+  this._connect = connect;
+  this._create = create;
+  this._popupMenu = popupMenu;
+  this._canvas = canvas;
+  this._rules = rules;
+  this._translate = translate;
+  this._eventBus = eventBus;
+  this._appendPreview = appendPreview;
+
+  if (config.autoPlace !== false) {
+    this._autoPlace = injector.get('autoPlace', false);
+  }
+
+  eventBus.on('create.end', 250, function(event) {
+    var context = event.context,
+        shape = context.shape;
+
+    if (!hasPrimaryModifier(event) || !contextPad.isOpen(shape)) {
+      return;
+    }
+
+    var entries = contextPad.getEntries(shape);
+
+    if (entries.replace) {
+      entries.replace.action.click(event, shape);
+    }
+  });
+
+  eventBus.on('contextPad.close', function() {
+    appendPreview.cleanUp();
+  });
+}
+
+ContextPadProvider.$inject = [
+  'config.contextPad',
+  'injector',
+  'eventBus',
+  'contextPad',
+  'modeling',
+  'elementFactory',
+  'connect',
+  'create',
+  'popupMenu',
+  'canvas',
+  'rules',
+  'translate',
+  'appendPreview'
+];
+
+/**
+ * @param {Element[]} elements
+ *
+ * @return {ContextPadEntries}
+ */
+ContextPadProvider.prototype.getMultiElementContextPadEntries = function(elements) {
+  var modeling = this._modeling;
+
+  var actions = {};
+
+  if (this._isDeleteAllowed(elements)) {
+    assign(actions, {
+      'delete': {
+        group: 'edit',
+        className: 'bpmn-icon-trash',
+        title: this._translate('Delete'),
+        action: {
+          click: function(event, elements) {
+            modeling.removeElements(elements.slice());
+          }
+        }
+      }
+    });
+  }
+
+  return actions;
+};
+
+/**
+ * @param {Element[]} elements
+ *
+ * @return {boolean}
+ */
+ContextPadProvider.prototype._isDeleteAllowed = function(elements) {
+
+  var baseAllowed = this._rules.allowed('elements.delete', {
+    elements: elements
+  });
+
+  if (isArray(baseAllowed)) {
+    return every(elements, el => baseAllowed.includes(el));
+  }
+
+  return baseAllowed;
+};
+
+/**
+ * @param {Element} element
+ *
+ * @return {ContextPadEntries}
+ */
+ContextPadProvider.prototype.getContextPadEntries = function(element) {
+  var contextPad = this._contextPad,
+      modeling = this._modeling,
+      elementFactory = this._elementFactory,
+      connect = this._connect,
+      create = this._create,
+      popupMenu = this._popupMenu,
+      autoPlace = this._autoPlace,
+      translate = this._translate,
+      appendPreview = this._appendPreview;
+
+  var actions = {};
+
+  if (element.type === 'label') {
+    if (this._isDeleteAllowed([ element ])) {
+      assign(actions, deleteAction());
+    }
+
+    return actions;
+  }
+
+  var businessObject = element.businessObject;
+
+  function startConnect(event, element) {
+    connect.start(event, element);
+  }
+
+  function removeElement(e, element) {
+    modeling.removeElements([ element ]);
+  }
+
+  function deleteAction() {
+    return {
+      'delete': {
+        group: 'edit',
+        className: 'bpmn-icon-trash',
+        title: translate('Delete'),
+        action: {
+          click: removeElement
+        }
+      }
+    };
+  }
+
+  function getReplaceMenuPosition(element) {
+
+    var Y_OFFSET = 5;
+
+    var pad = contextPad.getPad(element).html;
+
+    var padRect = pad.getBoundingClientRect();
+
+    var pos = {
+      x: padRect.left,
+      y: padRect.bottom + Y_OFFSET
+    };
+
+    return pos;
+  }
+
+  /**
+   * Create an append action.
+   *
+   * @param {string} type
+   * @param {string} className
+   * @param {string} title
+   * @param {Object} [options]
+   *
+   * @return {ContextPadEntry}
+   */
+  function appendAction(type, className, title, options) {
+
+    function appendStart(event, element) {
+
+      var shape = elementFactory.createShape(assign({ type: type }, options));
+
+      create.start(event, shape, {
+        source: element
+      });
+    }
+
+    var append = autoPlace ? function(_, element) {
+      var shape = elementFactory.createShape(assign({ type: type }, options));
+
+      autoPlace.append(element, shape);
+    } : appendStart;
+
+    var previewAppend = autoPlace ? function(_, element) {
+
+      // mouseover
+      appendPreview.create(element, type, options);
+
+      return () => {
+
+        // mouseout
+        appendPreview.cleanUp();
+      };
+    } : null;
+
+    return {
+      group: 'model',
+      className: className,
+      title: title,
+      action: {
+        dragstart: appendStart,
+        click: append,
+        hover: previewAppend
+      }
+    };
+  }
+
+  function splitLaneHandler(count) {
+
+    return function(_, element) {
+
+      // actual split
+      modeling.splitLane(element, count);
+
+      // refresh context pad after split to
+      // get rid of split icons
+      contextPad.open(element, true);
+    };
+  }
+
+
+  if (isAny(businessObject, [ 'bpmn:Lane', 'bpmn:Participant' ]) && isExpanded(element)) {
+
+    var childLanes = getChildLanes(element);
+
+    assign(actions, {
+      'lane-insert-above': {
+        group: 'lane-insert-above',
+        className: 'bpmn-icon-lane-insert-above',
+        title: translate('Add lane above'),
+        action: {
+          click: function(event, element) {
+            modeling.addLane(element, 'top');
+          }
+        }
+      }
+    });
+
+    if (childLanes.length < 2) {
+
+      if (isHorizontal(element) ? element.height >= 120 : element.width >= 120) {
+        assign(actions, {
+          'lane-divide-two': {
+            group: 'lane-divide',
+            className: 'bpmn-icon-lane-divide-two',
+            title: translate('Divide into two lanes'),
+            action: {
+              click: splitLaneHandler(2)
+            }
+          }
+        });
+      }
+
+      if (isHorizontal(element) ? element.height >= 180 : element.width >= 180) {
+        assign(actions, {
+          'lane-divide-three': {
+            group: 'lane-divide',
+            className: 'bpmn-icon-lane-divide-three',
+            title: translate('Divide into three lanes'),
+            action: {
+              click: splitLaneHandler(3)
+            }
+          }
+        });
+      }
+    }
+
+    assign(actions, {
+      'lane-insert-below': {
+        group: 'lane-insert-below',
+        className: 'bpmn-icon-lane-insert-below',
+        title: translate('Add lane below'),
+        action: {
+          click: function(event, element) {
+            modeling.addLane(element, 'bottom');
+          }
+        }
+      }
+    });
+
+  }
+
+  if (is(businessObject, 'bpmn:FlowNode')) {
+
+    if (is(businessObject, 'bpmn:EventBasedGateway')) {
+
+      assign(actions, {
+        'append.receive-task': appendAction(
+          'bpmn:ReceiveTask',
+          'bpmn-icon-receive-task',
+          translate('Append receive task')
+        ),
+        'append.message-intermediate-event': appendAction(
+          'bpmn:IntermediateCatchEvent',
+          'bpmn-icon-intermediate-event-catch-message',
+          translate('Append message intermediate catch event'),
+          { eventDefinitionType: 'bpmn:MessageEventDefinition' }
+        ),
+        'append.timer-intermediate-event': appendAction(
+          'bpmn:IntermediateCatchEvent',
+          'bpmn-icon-intermediate-event-catch-timer',
+          translate('Append timer intermediate catch event'),
+          { eventDefinitionType: 'bpmn:TimerEventDefinition' }
+        ),
+        'append.condition-intermediate-event': appendAction(
+          'bpmn:IntermediateCatchEvent',
+          'bpmn-icon-intermediate-event-catch-condition',
+          translate('Append conditional intermediate catch event'),
+          { eventDefinitionType: 'bpmn:ConditionalEventDefinition' }
+        ),
+        'append.signal-intermediate-event': appendAction(
+          'bpmn:IntermediateCatchEvent',
+          'bpmn-icon-intermediate-event-catch-signal',
+          translate('Append signal intermediate catch event'),
+          { eventDefinitionType: 'bpmn:SignalEventDefinition' }
+        )
+      });
+    } else
+
+    if (isEventType(businessObject, 'bpmn:BoundaryEvent', 'bpmn:CompensateEventDefinition')) {
+
+      assign(actions, {
+        'append.compensation-activity':
+            appendAction(
+              'bpmn:Task',
+              'bpmn-icon-task',
+              translate('Append compensation activity'),
+              {
+                isForCompensation: true
+              }
+            )
+      });
+    } else
+
+    if (!is(businessObject, 'bpmn:EndEvent') &&
+        !businessObject.isForCompensation &&
+        !isEventType(businessObject, 'bpmn:IntermediateThrowEvent', 'bpmn:LinkEventDefinition') &&
+        !isEventSubProcess(businessObject)) {
+
+      assign(actions, {
+        'append.end-event': appendAction(
+          'bpmn:EndEvent',
+          'bpmn-icon-end-event-none',
+          translate('Append end event')
+        ),
+        'append.gateway': appendAction(
+          'bpmn:ExclusiveGateway',
+          'bpmn-icon-gateway-none',
+          translate('Append gateway')
+        ),
+        'append.append-task': appendAction(
+          'bpmn:Task',
+          'bpmn-icon-task',
+          translate('Append task')
+        ),
+        'append.intermediate-event': appendAction(
+          'bpmn:IntermediateThrowEvent',
+          'bpmn-icon-intermediate-event-none',
+          translate('Append intermediate/boundary event')
+        )
+      });
+    }
+  }
+
+  if (!popupMenu.isEmpty(element, 'bpmn-replace')) {
+
+    // Replace menu entry
+    assign(actions, {
+      'replace': {
+        group: 'edit',
+        className: 'bpmn-icon-screw-wrench',
+        title: translate('Change element'),
+        action: {
+          click: function(event, element) {
+
+            var position = assign(getReplaceMenuPosition(element), {
+              cursor: { x: event.x, y: event.y }
+            });
+
+            popupMenu.open(element, 'bpmn-replace', position, {
+              title: translate('Change element'),
+              width: 300,
+              search: true
+            });
+          }
+        }
+      }
+    });
+  }
+
+  if (is(businessObject, 'bpmn:SequenceFlow')) {
+    assign(actions, {
+      'append.text-annotation': appendAction(
+        'bpmn:TextAnnotation',
+        'bpmn-icon-text-annotation',
+        translate('Add text annotation')
+      )
+    });
+  }
+
+  if (
+    isAny(businessObject, [
+      'bpmn:FlowNode',
+      'bpmn:InteractionNode',
+      'bpmn:DataObjectReference',
+      'bpmn:DataStoreReference',
+    ])
+  ) {
+    assign(actions, {
+      'append.text-annotation': appendAction(
+        'bpmn:TextAnnotation',
+        'bpmn-icon-text-annotation',
+        translate('Add text annotation')
+      ),
+      'connect': {
+        group: 'connect',
+        className: 'bpmn-icon-connection-multi',
+        title: translate('Connect to other element'),
+        action: {
+          click: startConnect,
+          dragstart: startConnect,
+        },
+      },
+    });
+  }
+
+  if (is(businessObject, 'bpmn:TextAnnotation')) {
+    assign(actions, {
+      'connect': {
+        group: 'connect',
+        className: 'bpmn-icon-connection-multi',
+        title: translate('Connect using association'),
+        action: {
+          click: startConnect,
+          dragstart: startConnect,
+        },
+      },
+    });
+  }
+
+  if (isAny(businessObject, [ 'bpmn:DataObjectReference', 'bpmn:DataStoreReference' ])) {
+    assign(actions, {
+      'connect': {
+        group: 'connect',
+        className: 'bpmn-icon-connection-multi',
+        title: translate('Connect using data input association'),
+        action: {
+          click: startConnect,
+          dragstart: startConnect
+        }
+      }
+    });
+  }
+
+  if (is(businessObject, 'bpmn:Group')) {
+    assign(actions, {
+      'append.text-annotation': appendAction(
+        'bpmn:TextAnnotation',
+        'bpmn-icon-text-annotation',
+        translate('Add text annotation')
+      )
+    });
+  }
+
+  if (this._isDeleteAllowed([ element ])) {
+    assign(actions, deleteAction());
+  }
+
+  return actions;
+};
+
+
+// helpers /////////
+
+/**
+ * @param {ModdleElement} businessObject
+ * @param {string} type
+ * @param {string} eventDefinitionType
+ *
+ * @return {boolean}
+ */
+function isEventType(businessObject, type, eventDefinitionType) {
+
+  var isType = businessObject.$instanceOf(type);
+  var isDefinition = false;
+
+  var definitions = businessObject.eventDefinitions || [];
+  forEach(definitions, function(def) {
+    if (def.$type === eventDefinitionType) {
+      isDefinition = true;
+    }
+  });
+
+  return isType && isDefinition;
+}

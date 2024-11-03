@@ -1,1 +1,77 @@
-define(["../core","../core/stripAndCollapse","../var/isFunction","../core/parseHTML","../ajax","../traversing","../manipulation","../selector"],(function(e,n,t){"use strict";e.fn.load=function(a,i,o){var s,r,c,l=this,p=a.indexOf(" ");return p>-1&&(s=n(a.slice(p)),a=a.slice(0,p)),t(i)?(o=i,i=void 0):i&&"object"==typeof i&&(r="POST"),l.length>0&&e.ajax({url:a,type:r||"GET",dataType:"html",data:i}).done((function(n){c=arguments,l.html(s?e("<div>").append(e.parseHTML(n)).find(s):n)})).always(o&&function(e,n){l.each((function(){o.apply(this,c||[e.responseText,n,e])}))}),this}}));
+define( [
+	"../core",
+	"../core/stripAndCollapse",
+	"../var/isFunction",
+	"../core/parseHTML",
+	"../ajax",
+	"../traversing",
+	"../manipulation",
+	"../selector"
+], function( jQuery, stripAndCollapse, isFunction ) {
+
+"use strict";
+
+/**
+ * Load a url into a page
+ */
+jQuery.fn.load = function( url, params, callback ) {
+	var selector, type, response,
+		self = this,
+		off = url.indexOf( " " );
+
+	if ( off > -1 ) {
+		selector = stripAndCollapse( url.slice( off ) );
+		url = url.slice( 0, off );
+	}
+
+	// If it's a function
+	if ( isFunction( params ) ) {
+
+		// We assume that it's the callback
+		callback = params;
+		params = undefined;
+
+	// Otherwise, build a param string
+	} else if ( params && typeof params === "object" ) {
+		type = "POST";
+	}
+
+	// If we have elements to modify, make the request
+	if ( self.length > 0 ) {
+		jQuery.ajax( {
+			url: url,
+
+			// If "type" variable is undefined, then "GET" method will be used.
+			// Make value of this field explicit since
+			// user can override it through ajaxSetup method
+			type: type || "GET",
+			dataType: "html",
+			data: params
+		} ).done( function( responseText ) {
+
+			// Save response for use in complete callback
+			response = arguments;
+
+			self.html( selector ?
+
+				// If a selector was specified, locate the right elements in a dummy div
+				// Exclude scripts to avoid IE 'Permission Denied' errors
+				jQuery( "<div>" ).append( jQuery.parseHTML( responseText ) ).find( selector ) :
+
+				// Otherwise use the full result
+				responseText );
+
+		// If the request succeeds, this function gets "data", "status", "jqXHR"
+		// but they are ignored because response was set above.
+		// If it fails, this function gets "jqXHR", "status", "error"
+		} ).always( callback && function( jqXHR, status ) {
+			self.each( function() {
+				callback.apply( this, response || [ jqXHR.responseText, status, jqXHR ] );
+			} );
+		} );
+	}
+
+	return this;
+};
+
+} );

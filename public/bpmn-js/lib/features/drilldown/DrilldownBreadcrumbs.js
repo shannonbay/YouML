@@ -1,1 +1,139 @@
-import{domify,classes}from"min-dom";import{find}from"min-dash";import{escapeHTML}from"diagram-js/lib/util/EscapeUtil";import{getBusinessObject,is}from"../../util/ModelUtil";import{getPlaneIdFromShape}from"../../util/DrilldownUtil";var OPEN_CLASS="bjs-breadcrumbs-shown";export default function DrilldownBreadcrumbs(e,n,t){var i=domify('<ul class="bjs-breadcrumbs"></ul>'),r=t.getContainer(),s=classes(r);r.appendChild(i);var o=[];function a(e){e&&(o=getBusinessObjectParentChain(e));var r=o.flatMap((function(e){var i=t.findRoot(getPlaneIdFromShape(e))||t.findRoot(e.id);if(!i&&is(e,"bpmn:Process")){var r=n.find((function(n){var t=getBusinessObject(n);return t&&t.get("processRef")===e}));i=r&&t.findRoot(r.id)}if(!i)return[];var s=escapeHTML(e.name||e.id),o=domify('<li><span class="bjs-crumb"><a title="'+s+'">'+s+"</a></span></li>");return o.addEventListener("click",(function(){t.setRootElement(i)})),o}));i.innerHTML="";var a=r.length>1;s.toggle(OPEN_CLASS,a),r.forEach((function(e){i.appendChild(e)}))}e.on("element.changed",(function(e){var n=e.element,t=getBusinessObject(n);find(o,(function(e){return e===t}))&&a()})),e.on("root.set",(function(e){a(e.element)}))}function getBusinessObjectParentChain(e){for(var n=[],t=getBusinessObject(e);t;t=t.$parent)(is(t,"bpmn:SubProcess")||is(t,"bpmn:Process"))&&n.push(t);return n.reverse()}DrilldownBreadcrumbs.$inject=["eventBus","elementRegistry","canvas"];
+import { domify, classes } from 'min-dom';
+import { find } from 'min-dash';
+
+import { escapeHTML } from 'diagram-js/lib/util/EscapeUtil';
+import { getBusinessObject, is } from '../../util/ModelUtil';
+import {
+  getPlaneIdFromShape
+} from '../../util/DrilldownUtil';
+
+/**
+ * @typedef {import('diagram-js/lib/core/Canvas').default} Canvas
+ * @typedef {import('diagram-js/lib/core/ElementRegistry').default} ElementRegistry
+ * @typedef {import('diagram-js/lib/core/EventBus').default} EventBus
+ *
+ * @typedef {import('../../model/Types').Element} Element
+ * @typedef {import('../../model/Types').Shape} Shape
+ */
+
+var OPEN_CLASS = 'bjs-breadcrumbs-shown';
+
+
+/**
+ * Adds overlays that allow switching planes on collapsed subprocesses.
+ *
+ * @param {EventBus} eventBus
+ * @param {ElementRegistry} elementRegistry
+ * @param {Canvas} canvas
+ */
+export default function DrilldownBreadcrumbs(eventBus, elementRegistry, canvas) {
+  var breadcrumbs = domify('<ul class="bjs-breadcrumbs"></ul>');
+  var container = canvas.getContainer();
+  var containerClasses = classes(container);
+  container.appendChild(breadcrumbs);
+
+  var businessObjectParents = [];
+
+  // update breadcrumbs if name or ID of the primary shape changes
+  eventBus.on('element.changed', function(event) {
+    var shape = event.element,
+        businessObject = getBusinessObject(shape);
+
+    var isPresent = find(businessObjectParents, function(element) {
+      return element === businessObject;
+    });
+
+    if (!isPresent) {
+      return;
+    }
+
+    updateBreadcrumbs();
+  });
+
+  /**
+   * Updates the displayed breadcrumbs. If no element is provided, only the
+   * labels are updated.
+   *
+   * @param {Element} [element]
+   */
+  function updateBreadcrumbs(element) {
+    if (element) {
+      businessObjectParents = getBusinessObjectParentChain(element);
+    }
+
+    var path = businessObjectParents.flatMap(function(parent) {
+      var parentPlane =
+        canvas.findRoot(getPlaneIdFromShape(parent)) ||
+        canvas.findRoot(parent.id);
+
+      // when the root is a collaboration, the process does not have a
+      // corresponding element in the elementRegisty. Instead, we search
+      // for the corresponding participant
+      if (!parentPlane && is(parent, 'bpmn:Process')) {
+        var participant = elementRegistry.find(function(element) {
+          var businessObject = getBusinessObject(element);
+
+          return businessObject && businessObject.get('processRef') === parent;
+        });
+
+        parentPlane = participant && canvas.findRoot(participant.id);
+      }
+
+      if (!parentPlane) {
+        return [];
+      }
+
+      var title = escapeHTML(parent.name || parent.id);
+      var link = domify('<li><span class="bjs-crumb"><a title="' + title + '">' + title + '</a></span></li>');
+
+      link.addEventListener('click', function() {
+        canvas.setRootElement(parentPlane);
+      });
+
+      return link;
+    });
+
+    breadcrumbs.innerHTML = '';
+
+    // show breadcrumbs and expose state to .djs-container
+    var visible = path.length > 1;
+
+    containerClasses.toggle(OPEN_CLASS, visible);
+
+    path.forEach(function(element) {
+      breadcrumbs.appendChild(element);
+    });
+  }
+
+  eventBus.on('root.set', function(event) {
+    updateBreadcrumbs(event.element);
+  });
+
+}
+
+DrilldownBreadcrumbs.$inject = [ 'eventBus', 'elementRegistry', 'canvas' ];
+
+
+// helpers //////////
+
+/**
+ * Returns the parents for the element using the business object chain,
+ * starting with the root element.
+ *
+ * @param {Shape} child
+ *
+ * @return {Shape}
+ */
+function getBusinessObjectParentChain(child) {
+  var businessObject = getBusinessObject(child);
+
+  var parents = [];
+
+  for (var element = businessObject; element; element = element.$parent) {
+    if (is(element, 'bpmn:SubProcess') || is(element, 'bpmn:Process')) {
+      parents.push(element);
+    }
+  }
+
+  return parents.reverse();
+}

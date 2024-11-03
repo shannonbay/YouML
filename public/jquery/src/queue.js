@@ -1,1 +1,145 @@
-define(["./core","./data/var/dataPriv","./deferred","./callbacks"],(function(e,u){"use strict";return e.extend({queue:function(t,r,n){var i;if(t)return r=(r||"fx")+"queue",i=u.get(t,r),n&&(!i||Array.isArray(n)?i=u.access(t,r,e.makeArray(n)):i.push(n)),i||[]},dequeue:function(u,t){t=t||"fx";var r=e.queue(u,t),n=r.length,i=r.shift(),s=e._queueHooks(u,t);"inprogress"===i&&(i=r.shift(),n--),i&&("fx"===t&&r.unshift("inprogress"),delete s.stop,i.call(u,(function(){e.dequeue(u,t)}),s)),!n&&s&&s.empty.fire()},_queueHooks:function(t,r){var n=r+"queueHooks";return u.get(t,n)||u.access(t,n,{empty:e.Callbacks("once memory").add((function(){u.remove(t,[r+"queue",n])}))})}}),e.fn.extend({queue:function(u,t){var r=2;return"string"!=typeof u&&(t=u,u="fx",r--),arguments.length<r?e.queue(this[0],u):void 0===t?this:this.each((function(){var r=e.queue(this,u,t);e._queueHooks(this,u),"fx"===u&&"inprogress"!==r[0]&&e.dequeue(this,u)}))},dequeue:function(u){return this.each((function(){e.dequeue(this,u)}))},clearQueue:function(e){return this.queue(e||"fx",[])},promise:function(t,r){var n,i=1,s=e.Deferred(),o=this,f=this.length,a=function(){--i||s.resolveWith(o,[o])};for("string"!=typeof t&&(r=t,t=void 0),t=t||"fx";f--;)(n=u.get(o[f],t+"queueHooks"))&&n.empty&&(i++,n.empty.add(a));return a(),s.promise(r)}}),e}));
+define( [
+	"./core",
+	"./data/var/dataPriv",
+	"./deferred",
+	"./callbacks"
+], function( jQuery, dataPriv ) {
+
+"use strict";
+
+jQuery.extend( {
+	queue: function( elem, type, data ) {
+		var queue;
+
+		if ( elem ) {
+			type = ( type || "fx" ) + "queue";
+			queue = dataPriv.get( elem, type );
+
+			// Speed up dequeue by getting out quickly if this is just a lookup
+			if ( data ) {
+				if ( !queue || Array.isArray( data ) ) {
+					queue = dataPriv.access( elem, type, jQuery.makeArray( data ) );
+				} else {
+					queue.push( data );
+				}
+			}
+			return queue || [];
+		}
+	},
+
+	dequeue: function( elem, type ) {
+		type = type || "fx";
+
+		var queue = jQuery.queue( elem, type ),
+			startLength = queue.length,
+			fn = queue.shift(),
+			hooks = jQuery._queueHooks( elem, type ),
+			next = function() {
+				jQuery.dequeue( elem, type );
+			};
+
+		// If the fx queue is dequeued, always remove the progress sentinel
+		if ( fn === "inprogress" ) {
+			fn = queue.shift();
+			startLength--;
+		}
+
+		if ( fn ) {
+
+			// Add a progress sentinel to prevent the fx queue from being
+			// automatically dequeued
+			if ( type === "fx" ) {
+				queue.unshift( "inprogress" );
+			}
+
+			// Clear up the last queue stop function
+			delete hooks.stop;
+			fn.call( elem, next, hooks );
+		}
+
+		if ( !startLength && hooks ) {
+			hooks.empty.fire();
+		}
+	},
+
+	// Not public - generate a queueHooks object, or return the current one
+	_queueHooks: function( elem, type ) {
+		var key = type + "queueHooks";
+		return dataPriv.get( elem, key ) || dataPriv.access( elem, key, {
+			empty: jQuery.Callbacks( "once memory" ).add( function() {
+				dataPriv.remove( elem, [ type + "queue", key ] );
+			} )
+		} );
+	}
+} );
+
+jQuery.fn.extend( {
+	queue: function( type, data ) {
+		var setter = 2;
+
+		if ( typeof type !== "string" ) {
+			data = type;
+			type = "fx";
+			setter--;
+		}
+
+		if ( arguments.length < setter ) {
+			return jQuery.queue( this[ 0 ], type );
+		}
+
+		return data === undefined ?
+			this :
+			this.each( function() {
+				var queue = jQuery.queue( this, type, data );
+
+				// Ensure a hooks for this queue
+				jQuery._queueHooks( this, type );
+
+				if ( type === "fx" && queue[ 0 ] !== "inprogress" ) {
+					jQuery.dequeue( this, type );
+				}
+			} );
+	},
+	dequeue: function( type ) {
+		return this.each( function() {
+			jQuery.dequeue( this, type );
+		} );
+	},
+	clearQueue: function( type ) {
+		return this.queue( type || "fx", [] );
+	},
+
+	// Get a promise resolved when queues of a certain type
+	// are emptied (fx is the type by default)
+	promise: function( type, obj ) {
+		var tmp,
+			count = 1,
+			defer = jQuery.Deferred(),
+			elements = this,
+			i = this.length,
+			resolve = function() {
+				if ( !( --count ) ) {
+					defer.resolveWith( elements, [ elements ] );
+				}
+			};
+
+		if ( typeof type !== "string" ) {
+			obj = type;
+			type = undefined;
+		}
+		type = type || "fx";
+
+		while ( i-- ) {
+			tmp = dataPriv.get( elements[ i ], type + "queueHooks" );
+			if ( tmp && tmp.empty ) {
+				count++;
+				tmp.empty.add( resolve );
+			}
+		}
+		resolve();
+		return defer.promise( obj );
+	}
+} );
+
+return jQuery;
+} );

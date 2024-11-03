@@ -1,1 +1,7 @@
-define((function(){"use strict";return/HTML$/i}));
+define( function() {
+
+"use strict";
+
+return ( /HTML$/i );
+
+} );

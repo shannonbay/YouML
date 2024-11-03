@@ -1,1 +1,42 @@
-define(["../var/document","../core"],(function(e,n){"use strict";var r=["Webkit","Moz","ms"],t=e.createElement("div").style,i={};return function(e){return n.cssProps[e]||i[e]||(e in t?e:i[e]=function(e){for(var n=e[0].toUpperCase()+e.slice(1),i=r.length;i--;)if((e=r[i]+n)in t)return e}(e)||e)}}));
+define( [
+	"../var/document",
+	"../core"
+], function( document, jQuery ) {
+
+"use strict";
+
+var cssPrefixes = [ "Webkit", "Moz", "ms" ],
+	emptyStyle = document.createElement( "div" ).style,
+	vendorProps = {};
+
+// Return a vendor-prefixed property or undefined
+function vendorPropName( name ) {
+
+	// Check for vendor prefixed names
+	var capName = name[ 0 ].toUpperCase() + name.slice( 1 ),
+		i = cssPrefixes.length;
+
+	while ( i-- ) {
+		name = cssPrefixes[ i ] + capName;
+		if ( name in emptyStyle ) {
+			return name;
+		}
+	}
+}
+
+// Return a potentially-mapped jQuery.cssProps or vendor prefixed property
+function finalPropName( name ) {
+	var final = jQuery.cssProps[ name ] || vendorProps[ name ];
+
+	if ( final ) {
+		return final;
+	}
+	if ( name in emptyStyle ) {
+		return name;
+	}
+	return vendorProps[ name ] = vendorPropName( name ) || name;
+}
+
+return finalPropName;
+
+} );

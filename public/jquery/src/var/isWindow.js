@@ -1,1 +1,8 @@
-define((function(){"use strict";return function(n){return null!=n&&n===n.window}}));
+define( function() {
+	"use strict";
+
+	return function isWindow( obj ) {
+		return obj != null && obj === obj.window;
+	};
+
+} );

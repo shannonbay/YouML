@@ -1,1 +1,413 @@
-import{assign,forEach,has,isDefined,isObject,omit}from"min-dash";import inherits from"inherits-browser";import{getBusinessObject,getDi,is}from"../../util/ModelUtil";import{isAny}from"../modeling/util/ModelingUtil";import{isExpanded}from"../../util/DiUtil";import BaseElementFactory from"diagram-js/lib/core/ElementFactory";import{DEFAULT_LABEL_SIZE}from"../../util/LabelUtil";import{ensureCompatDiRef}from"../../util/CompatibilityUtil";export default function ElementFactory(e,t){BaseElementFactory.call(this),this._bpmnFactory=e,this._moddle=t}function applyAttributes(e,t,i){return forEach(i,(function(i){t=applyAttribute(e,t,i)})),t}function applyAttribute(e,t,i){return void 0===t[i]?t:(e[i]=t[i],omit(t,[i]))}function isModdleDi(e){return isAny(e,["bpmndi:BPMNShape","bpmndi:BPMNEdge","bpmndi:BPMNDiagram","bpmndi:BPMNPlane"])}inherits(ElementFactory,BaseElementFactory),ElementFactory.$inject=["bpmnFactory","moddle"],ElementFactory.prototype._baseCreate=BaseElementFactory.prototype.create,ElementFactory.prototype.create=function(e,t){if("label"===e){var i=t.di||this._bpmnFactory.createDiLabel();return this._baseCreate(e,assign({type:"label",di:i},DEFAULT_LABEL_SIZE,t))}return this.createElement(e,t)},ElementFactory.prototype.createElement=function(e,t){var i,n,r,a=(t=assign({},t||{})).businessObject,s=t.di;if(!a){if(!t.type)throw new Error("no shape type specified");a=this._bpmnFactory.create(t.type),ensureCompatDiRef(a)}if(!isModdleDi(s)){var o=assign({},s||{},{id:a.id+"_di"});s="root"===e?this._bpmnFactory.createDiPlane(a,o):"connection"===e?this._bpmnFactory.createDiEdge(a,o):this._bpmnFactory.createDiShape(a,o)}return is(a,"bpmn:Group")&&(t=assign({isFrame:!0},t)),(t=applyAttributes(a,t,["processRef","isInterrupting","associationDirection","isForCompensation"])).isExpanded&&(t=applyAttribute(s,t,"isExpanded")),isAny(a,["bpmn:Lane","bpmn:Participant"])&&(t=applyAttribute(s,t,"isHorizontal")),is(a,"bpmn:SubProcess")&&(t.collapsed=!isExpanded(a,s)),is(a,"bpmn:ExclusiveGateway")&&(has(s,"isMarkerVisible")?void 0===s.isMarkerVisible&&(s.isMarkerVisible=!1):s.isMarkerVisible=!0),isDefined(t.triggeredByEvent)&&(a.triggeredByEvent=t.triggeredByEvent,delete t.triggeredByEvent),isDefined(t.cancelActivity)&&(a.cancelActivity=t.cancelActivity,delete t.cancelActivity),t.eventDefinitionType&&(n=a.get("eventDefinitions")||[],r=this._bpmnFactory.create(t.eventDefinitionType,t.eventDefinitionAttrs),"bpmn:ConditionalEventDefinition"===t.eventDefinitionType&&(r.condition=this._bpmnFactory.create("bpmn:FormalExpression")),n.push(r),r.$parent=a,a.eventDefinitions=n,delete t.eventDefinitionType),i=this.getDefaultSize(a,s),t=assign({id:a.id},i,t,{businessObject:a,di:s}),this._baseCreate(e,t)},ElementFactory.prototype.getDefaultSize=function(e,t){var i=getBusinessObject(e);if(t=t||getDi(e),is(i,"bpmn:SubProcess"))return isExpanded(i,t)?{width:350,height:200}:{width:100,height:80};if(is(i,"bpmn:Task"))return{width:100,height:80};if(is(i,"bpmn:Gateway"))return{width:50,height:50};if(is(i,"bpmn:Event"))return{width:36,height:36};if(is(i,"bpmn:Participant")){var n=void 0===t.isHorizontal||!0===t.isHorizontal;return isExpanded(i,t)?n?{width:600,height:250}:{width:250,height:600}:n?{width:400,height:60}:{width:60,height:400}}return is(i,"bpmn:Lane")?{width:400,height:100}:is(i,"bpmn:DataObjectReference")?{width:36,height:50}:is(i,"bpmn:DataStoreReference")?{width:50,height:50}:is(i,"bpmn:TextAnnotation")?{width:100,height:30}:is(i,"bpmn:Group")?{width:300,height:300}:{width:100,height:80}},ElementFactory.prototype.createParticipantShape=function(e){return isObject(e)||(e={isExpanded:e}),!1!==(e=assign({type:"bpmn:Participant"},e||{})).isExpanded&&(e.processRef=this._bpmnFactory.create("bpmn:Process")),this.createShape(e)};
+import {
+  assign,
+  forEach,
+  has,
+  isDefined,
+  isObject,
+  omit
+} from 'min-dash';
+
+import inherits from 'inherits-browser';
+
+import {
+  getBusinessObject,
+  getDi,
+  is
+} from '../../util/ModelUtil';
+
+import {
+  isAny
+} from '../modeling/util/ModelingUtil';
+
+import {
+  isExpanded
+} from '../../util/DiUtil';
+
+import BaseElementFactory from 'diagram-js/lib/core/ElementFactory';
+
+import {
+  DEFAULT_LABEL_SIZE
+} from '../../util/LabelUtil';
+
+import {
+  ensureCompatDiRef
+} from '../../util/CompatibilityUtil';
+
+/**
+ * @typedef {import('diagram-js/lib/util/Types').Dimensions} Dimensions
+ *
+ * @typedef {import('./BpmnFactory').default} BpmnFactory
+ *
+ * @typedef {import('../../model/Types').BpmnAttributes} BpmnAttributes
+ * @typedef {import('../../model/Types').Connection} Connection
+ * @typedef {import('../../model/Types').Element} Element
+ * @typedef {import('../../model/Types').Label} Label
+ * @typedef {import('../../model/Types').Root} Root
+ * @typedef {import('../../model/Types').Shape} Shape
+ * @typedef {import('../../model/Types').Moddle} Moddle
+ * @typedef {import('../../model/Types').ModdleElement} ModdleElement
+ */
+
+/**
+ * A BPMN-specific element factory.
+ *
+ * @template {Connection} [T=Connection]
+ * @template {Label} [U=Label]
+ * @template {Root} [V=Root]
+ * @template {Shape} [W=Shape]
+ *
+ * @extends {BaseElementFactory<T, U, V, W>}
+ *
+ * @param {BpmnFactory} bpmnFactory
+ * @param {Moddle} moddle
+ */
+export default function ElementFactory(bpmnFactory, moddle) {
+  BaseElementFactory.call(this);
+
+  this._bpmnFactory = bpmnFactory;
+  this._moddle = moddle;
+}
+
+inherits(ElementFactory, BaseElementFactory);
+
+ElementFactory.$inject = [
+  'bpmnFactory',
+  'moddle'
+];
+
+ElementFactory.prototype._baseCreate = BaseElementFactory.prototype.create;
+
+/**
+ * Create a root element.
+ *
+ * @overlord
+ * @param {'root'} elementType
+ * @param {Partial<Root> & Partial<BpmnAttributes>} [attrs]
+ * @return {V}
+ */
+
+/**
+ * Create a shape.
+ *
+ * @overlord
+ * @param {'shape'} elementType
+ * @param {Partial<Shape> & Partial<BpmnAttributes>} [attrs]
+ * @return {W}
+ */
+
+/**
+ * Create a connection.
+ *
+ * @overlord
+ * @param {'connection'} elementType
+ * @param {Partial<Connection> & Partial<BpmnAttributes>} [attrs]
+ * @return {T}
+ */
+
+/**
+ * Create a label.
+ *
+ * @param {'label'} elementType
+ * @param {Partial<Label> & Partial<BpmnAttributes>} [attrs]
+ * @return {U}
+ */
+ElementFactory.prototype.create = function(elementType, attrs) {
+
+  // no special magic for labels,
+  // we assume their businessObjects have already been created
+  // and wired via attrs
+  if (elementType === 'label') {
+    var di = attrs.di || this._bpmnFactory.createDiLabel();
+    return this._baseCreate(elementType, assign({ type: 'label', di: di }, DEFAULT_LABEL_SIZE, attrs));
+  }
+
+  return this.createElement(elementType, attrs);
+};
+
+/**
+ * Create a BPMN root element.
+ *
+ * @overlord
+ * @param {'root'} elementType
+ * @param {Partial<Root> & Partial<BpmnAttributes>} [attrs]
+ * @return {V}
+ */
+
+/**
+ * Create a BPMN shape.
+ *
+ * @overlord
+ * @param {'shape'} elementType
+ * @param {Partial<Shape> & Partial<BpmnAttributes>} [attrs]
+ * @return {W}
+ */
+
+/**
+ * Create a BPMN connection.
+ *
+ * @param {'connection'} elementType
+ * @param {Partial<Connection> & Partial<BpmnAttributes>} [attrs]
+ * @return {T}
+ */
+ElementFactory.prototype.createElement = function(elementType, attrs) {
+
+  attrs = assign({}, attrs || {});
+
+  var size;
+
+  var businessObject = attrs.businessObject,
+      di = attrs.di;
+
+  if (!businessObject) {
+    if (!attrs.type) {
+      throw new Error('no shape type specified');
+    }
+
+    businessObject = this._bpmnFactory.create(attrs.type);
+
+    ensureCompatDiRef(businessObject);
+  }
+
+  if (!isModdleDi(di)) {
+    var diAttrs = assign(
+      {},
+      di || {},
+      { id: businessObject.id + '_di' }
+    );
+
+    if (elementType === 'root') {
+      di = this._bpmnFactory.createDiPlane(businessObject, diAttrs);
+    } else
+    if (elementType === 'connection') {
+      di = this._bpmnFactory.createDiEdge(businessObject, diAttrs);
+    } else {
+      di = this._bpmnFactory.createDiShape(businessObject, diAttrs);
+    }
+  }
+
+  if (is(businessObject, 'bpmn:Group')) {
+    attrs = assign({
+      isFrame: true
+    }, attrs);
+  }
+
+  attrs = applyAttributes(businessObject, attrs, [
+    'processRef',
+    'isInterrupting',
+    'associationDirection',
+    'isForCompensation'
+  ]);
+
+  if (attrs.isExpanded) {
+    attrs = applyAttribute(di, attrs, 'isExpanded');
+  }
+
+  if (isAny(businessObject, [ 'bpmn:Lane', 'bpmn:Participant' ])) {
+    attrs = applyAttribute(di, attrs, 'isHorizontal');
+  }
+
+  if (is(businessObject, 'bpmn:SubProcess')) {
+    attrs.collapsed = !isExpanded(businessObject, di);
+  }
+
+  if (is(businessObject, 'bpmn:ExclusiveGateway')) {
+    if (has(di, 'isMarkerVisible')) {
+      if (di.isMarkerVisible === undefined) {
+        di.isMarkerVisible = false;
+      }
+    } else {
+      di.isMarkerVisible = true;
+    }
+  }
+
+  if (isDefined(attrs.triggeredByEvent)) {
+    businessObject.triggeredByEvent = attrs.triggeredByEvent;
+    delete attrs.triggeredByEvent;
+  }
+
+  if (isDefined(attrs.cancelActivity)) {
+    businessObject.cancelActivity = attrs.cancelActivity;
+    delete attrs.cancelActivity;
+  }
+
+  var eventDefinitions,
+      newEventDefinition;
+
+  if (attrs.eventDefinitionType) {
+    eventDefinitions = businessObject.get('eventDefinitions') || [];
+    newEventDefinition = this._bpmnFactory.create(attrs.eventDefinitionType, attrs.eventDefinitionAttrs);
+
+    if (attrs.eventDefinitionType === 'bpmn:ConditionalEventDefinition') {
+      newEventDefinition.condition = this._bpmnFactory.create('bpmn:FormalExpression');
+    }
+
+    eventDefinitions.push(newEventDefinition);
+
+    newEventDefinition.$parent = businessObject;
+    businessObject.eventDefinitions = eventDefinitions;
+
+    delete attrs.eventDefinitionType;
+  }
+
+  size = this.getDefaultSize(businessObject, di);
+
+  attrs = assign({
+    id: businessObject.id
+  }, size, attrs, {
+    businessObject: businessObject,
+    di: di
+  });
+
+  return this._baseCreate(elementType, attrs);
+};
+
+/**
+ * Get the default size of a diagram element.
+ *
+ * @param {Element} element The element.
+ * @param {ModdleElement} di The DI.
+ *
+ * @return {Dimensions} Default width and height of the element.
+ */
+ElementFactory.prototype.getDefaultSize = function(element, di) {
+
+  var bo = getBusinessObject(element);
+  di = di || getDi(element);
+
+  if (is(bo, 'bpmn:SubProcess')) {
+    if (isExpanded(bo, di)) {
+      return { width: 350, height: 200 };
+    } else {
+      return { width: 100, height: 80 };
+    }
+  }
+
+  if (is(bo, 'bpmn:Task')) {
+    return { width: 100, height: 80 };
+  }
+
+  if (is(bo, 'bpmn:Gateway')) {
+    return { width: 50, height: 50 };
+  }
+
+  if (is(bo, 'bpmn:Event')) {
+    return { width: 36, height: 36 };
+  }
+
+  if (is(bo, 'bpmn:Participant')) {
+    var isHorizontalPool = di.isHorizontal === undefined || di.isHorizontal === true;
+    if (isExpanded(bo, di)) {
+      if (isHorizontalPool) {
+        return { width: 600, height: 250 };
+      }
+      return { width: 250, height: 600 };
+    } else {
+      if (isHorizontalPool) {
+        return { width: 400, height: 60 };
+      }
+      return { width: 60, height: 400 };
+    }
+  }
+
+  if (is(bo, 'bpmn:Lane')) {
+    return { width: 400, height: 100 };
+  }
+
+  if (is(bo, 'bpmn:DataObjectReference')) {
+    return { width: 36, height: 50 };
+  }
+
+  if (is(bo, 'bpmn:DataStoreReference')) {
+    return { width: 50, height: 50 };
+  }
+
+  if (is(bo, 'bpmn:TextAnnotation')) {
+    return { width: 100, height: 30 };
+  }
+
+  if (is(bo, 'bpmn:Group')) {
+    return { width: 300, height: 300 };
+  }
+
+  return { width: 100, height: 80 };
+};
+
+
+/**
+ * Create participant.
+ *
+ * @param {boolean|Partial<Shape> & Partial<BpmnAttributes>} [attrs]
+ * Attributes or whether the participant is expanded.
+ *
+ * @return {W} The created participant.
+ */
+ElementFactory.prototype.createParticipantShape = function(attrs) {
+
+  if (!isObject(attrs)) {
+    attrs = { isExpanded: attrs };
+  }
+
+  attrs = assign({ type: 'bpmn:Participant' }, attrs || {});
+
+  // participants are expanded by default
+  if (attrs.isExpanded !== false) {
+    attrs.processRef = this._bpmnFactory.create('bpmn:Process');
+  }
+
+  return this.createShape(attrs);
+};
+
+
+// helpers //////////////////////
+
+/**
+ * Apply attributes from a map to the given element, remove attribute from the
+ * map on application.
+ *
+ * @param {Element} element
+ * @param {Object} attrs (in/out map of attributes)
+ * @param {string[]} attributeNames name of attributes to apply
+ *
+ * @return {Object} changed attrs
+ */
+function applyAttributes(element, attrs, attributeNames) {
+
+  forEach(attributeNames, function(property) {
+    attrs = applyAttribute(element, attrs, property);
+  });
+
+  return attrs;
+}
+
+/**
+ * Apply named property to element and drain it from the attrs collection.
+ *
+ * @param {Element} element
+ * @param {Object} attrs (in/out map of attributes)
+ * @param {string} attributeName to apply
+ *
+ * @return {Object} changed attrs
+ */
+function applyAttribute(element, attrs, attributeName) {
+  if (attrs[attributeName] === undefined) {
+    return attrs;
+  }
+
+  element[attributeName] = attrs[attributeName];
+
+  return omit(attrs, [ attributeName ]);
+}
+
+/**
+ * @param {Element} element
+ *
+ * @return {boolean}
+ */
+function isModdleDi(element) {
+  return isAny(element, [
+    'bpmndi:BPMNShape',
+    'bpmndi:BPMNEdge',
+    'bpmndi:BPMNDiagram',
+    'bpmndi:BPMNPlane',
+  ]);
+}

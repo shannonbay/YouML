@@ -1,1 +1,363 @@
-import{assign}from"min-dash";import{is}from"../util/ModelUtil";import{isLabelExternal,getExternalLabelBounds,getLabel}from"../util/LabelUtil";import{getMid}from"diagram-js/lib/layout/LayoutUtil";import{isExpanded}from"../util/DiUtil";import{elementToString}from"./Util";function elementData(e,t,n){return assign({id:e.id,type:e.$type,businessObject:e,di:t},n)}function getWaypoints(e,t,n){var r=e.waypoint;return!r||r.length<2?[getMid(t),getMid(n)]:r.map((function(e){return{x:e.x,y:e.y}}))}function notYetDrawn(e,t,n){return new Error(`element ${elementToString(t)} referenced by ${elementToString(e)}#${n} not yet drawn`)}export default function BpmnImporter(e,t,n,r,i){this._eventBus=e,this._canvas=t,this._elementFactory=n,this._elementRegistry=r,this._textRenderer=i}function isPointInsideBBox(e,t){var n=t.x,r=t.y;return n>=e.x&&n<=e.x+e.width&&r>=e.y&&r<=e.y+e.height}function isFrameElement(e){return is(e,"bpmn:Group")}BpmnImporter.$inject=["eventBus","canvas","elementFactory","elementRegistry","textRenderer"],BpmnImporter.prototype.add=function(e,t,n){var r,i,a;if(is(t,"bpmndi:BPMNPlane")){var o=is(e,"bpmn:SubProcess")?{id:e.id+"_plane"}:{};r=this._elementFactory.createRoot(elementData(e,t,o)),this._canvas.addRootElement(r)}else if(is(t,"bpmndi:BPMNShape")){var s=!isExpanded(e,t),d=isFrameElement(e);i=n&&(n.hidden||n.collapsed);var m=t.bounds;r=this._elementFactory.createShape(elementData(e,t,{collapsed:s,hidden:i,x:Math.round(m.x),y:Math.round(m.y),width:Math.round(m.width),height:Math.round(m.height),isFrame:d})),is(e,"bpmn:BoundaryEvent")&&this._attachBoundary(e,r),is(e,"bpmn:Lane")&&(a=0),is(e,"bpmn:DataStoreReference")&&(isPointInsideBBox(n,getMid(m))||(n=this._canvas.findRoot(n))),this._canvas.addShape(r,n,a)}else{if(!is(t,"bpmndi:BPMNEdge"))throw new Error(`unknown di ${elementToString(t)} for element ${elementToString(e)}`);var l=this._getSource(e),p=this._getTarget(e);i=n&&(n.hidden||n.collapsed),r=this._elementFactory.createConnection(elementData(e,t,{hidden:i,source:l,target:p,waypoints:getWaypoints(t,l,p)})),is(e,"bpmn:DataAssociation")&&(n=this._canvas.findRoot(n)),this._canvas.addConnection(r,n,a)}return isLabelExternal(e)&&getLabel(r)&&this.addLabel(e,t,r),this._eventBus.fire("bpmnElement.added",{element:r}),r},BpmnImporter.prototype._attachBoundary=function(e,t){var n=e.attachedToRef;if(!n)throw new Error(`missing ${elementToString(e)}#attachedToRef`);var r=this._elementRegistry.get(n.id),i=r&&r.attachers;if(!r)throw notYetDrawn(e,n,"attachedToRef");t.host=r,i||(r.attachers=i=[]),-1===i.indexOf(t)&&i.push(t)},BpmnImporter.prototype.addLabel=function(e,t,n){var r,i,a;return r=getExternalLabelBounds(t,n),(i=getLabel(n))&&(r=this._textRenderer.getExternalLabelBounds(r,i)),a=this._elementFactory.createLabel(elementData(e,t,{id:e.id+"_label",labelTarget:n,type:"label",hidden:n.hidden||!getLabel(n),x:Math.round(r.x),y:Math.round(r.y),width:Math.round(r.width),height:Math.round(r.height)})),this._canvas.addShape(a,n.parent)},BpmnImporter.prototype._getConnectedElement=function(e,t){var n,r,i=e.$type;if(r=e[t+"Ref"],"source"===t&&"bpmn:DataInputAssociation"===i&&(r=r&&r[0]),("source"===t&&"bpmn:DataOutputAssociation"===i||"target"===t&&"bpmn:DataInputAssociation"===i)&&(r=e.$parent),n=r&&this._getElement(r))return n;throw r?notYetDrawn(e,r,t+"Ref"):new Error(`${elementToString(e)}#${t} Ref not specified`)},BpmnImporter.prototype._getSource=function(e){return this._getConnectedElement(e,"source")},BpmnImporter.prototype._getTarget=function(e){return this._getConnectedElement(e,"target")},BpmnImporter.prototype._getElement=function(e){return this._elementRegistry.get(e.id)};
+import {
+  assign
+} from 'min-dash';
+
+import { is } from '../util/ModelUtil';
+
+import {
+  isLabelExternal,
+  getExternalLabelBounds,
+  getLabel
+} from '../util/LabelUtil';
+
+import {
+  getMid
+} from 'diagram-js/lib/layout/LayoutUtil';
+
+import {
+  isExpanded
+} from '../util/DiUtil';
+
+import {
+  elementToString
+} from './Util';
+
+/**
+ * @typedef {import('diagram-js/lib/core/Canvas').default} Canvas
+ * @typedef {import('diagram-js/lib/core/ElementRegistry').default} ElementRegistry
+ * @typedef {import('diagram-js/lib/core/EventBus').default} EventBus
+ *
+ * @typedef {import('../features/modeling/ElementFactory').default} ElementFactory
+ * @typedef {import('../draw/TextRenderer').default} TextRenderer
+ *
+ * @typedef {import('../model/Types').Element} Element
+ * @typedef {import('../model/Types').Label} Label
+ * @typedef {import('../model/Types').Shape} Shape
+ * @typedef {import('../model/Types').Connection} Connection
+ * @typedef {import('../model/Types').Root} Root
+ * @typedef {import('../model/Types').ModdleElement} ModdleElement
+ */
+
+/**
+ * @param {ModdleElement} semantic
+ * @param {ModdleElement} di
+ * @param {Object} [attrs=null]
+ *
+ * @return {Object}
+ */
+function elementData(semantic, di, attrs) {
+  return assign({
+    id: semantic.id,
+    type: semantic.$type,
+    businessObject: semantic,
+    di: di
+  }, attrs);
+}
+
+function getWaypoints(di, source, target) {
+
+  var waypoints = di.waypoint;
+
+  if (!waypoints || waypoints.length < 2) {
+    return [ getMid(source), getMid(target) ];
+  }
+
+  return waypoints.map(function(p) {
+    return { x: p.x, y: p.y };
+  });
+}
+
+function notYetDrawn(semantic, refSemantic, property) {
+  return new Error(
+    `element ${ elementToString(refSemantic) } referenced by ${ elementToString(semantic) }#${ property } not yet drawn`
+  );
+}
+
+
+/**
+ * An importer that adds bpmn elements to the canvas
+ *
+ * @param {EventBus} eventBus
+ * @param {Canvas} canvas
+ * @param {ElementFactory} elementFactory
+ * @param {ElementRegistry} elementRegistry
+ * @param {TextRenderer} textRenderer
+ */
+export default function BpmnImporter(
+    eventBus, canvas, elementFactory,
+    elementRegistry, textRenderer) {
+
+  this._eventBus = eventBus;
+  this._canvas = canvas;
+  this._elementFactory = elementFactory;
+  this._elementRegistry = elementRegistry;
+  this._textRenderer = textRenderer;
+}
+
+BpmnImporter.$inject = [
+  'eventBus',
+  'canvas',
+  'elementFactory',
+  'elementRegistry',
+  'textRenderer'
+];
+
+
+/**
+ * Add a BPMN element (semantic) to the canvas making it a child of the
+ * given parent.
+ *
+ * @param {ModdleElement} semantic
+ * @param {ModdleElement} di
+ * @param {Shape} parentElement
+ *
+ * @return {Shape | Root | Connection}
+ */
+BpmnImporter.prototype.add = function(semantic, di, parentElement) {
+  var element,
+      hidden;
+
+  var parentIndex;
+
+  // ROOT ELEMENT
+  // handle the special case that we deal with a
+  // invisible root element (process, subprocess or collaboration)
+  if (is(di, 'bpmndi:BPMNPlane')) {
+
+    var attrs = is(semantic, 'bpmn:SubProcess')
+      ? { id: semantic.id + '_plane' }
+      : {};
+
+    // add a virtual element (not being drawn)
+    element = this._elementFactory.createRoot(elementData(semantic, di, attrs));
+
+    this._canvas.addRootElement(element);
+  }
+
+  // SHAPE
+  else if (is(di, 'bpmndi:BPMNShape')) {
+
+    var collapsed = !isExpanded(semantic, di),
+        isFrame = isFrameElement(semantic);
+
+    hidden = parentElement && (parentElement.hidden || parentElement.collapsed);
+
+    var bounds = di.bounds;
+
+    element = this._elementFactory.createShape(elementData(semantic, di, {
+      collapsed: collapsed,
+      hidden: hidden,
+      x: Math.round(bounds.x),
+      y: Math.round(bounds.y),
+      width: Math.round(bounds.width),
+      height: Math.round(bounds.height),
+      isFrame: isFrame
+    }));
+
+    if (is(semantic, 'bpmn:BoundaryEvent')) {
+      this._attachBoundary(semantic, element);
+    }
+
+    // insert lanes behind other flow nodes (cf. #727)
+    if (is(semantic, 'bpmn:Lane')) {
+      parentIndex = 0;
+    }
+
+    if (is(semantic, 'bpmn:DataStoreReference')) {
+
+      // check whether data store is inside our outside of its semantic parent
+      if (!isPointInsideBBox(parentElement, getMid(bounds))) {
+        parentElement = this._canvas.findRoot(parentElement);
+      }
+    }
+
+    this._canvas.addShape(element, parentElement, parentIndex);
+  }
+
+  // CONNECTION
+  else if (is(di, 'bpmndi:BPMNEdge')) {
+
+    var source = this._getSource(semantic),
+        target = this._getTarget(semantic);
+
+    hidden = parentElement && (parentElement.hidden || parentElement.collapsed);
+
+    element = this._elementFactory.createConnection(elementData(semantic, di, {
+      hidden: hidden,
+      source: source,
+      target: target,
+      waypoints: getWaypoints(di, source, target)
+    }));
+
+    if (is(semantic, 'bpmn:DataAssociation')) {
+
+      // render always on top; this ensures DataAssociations
+      // are rendered correctly across different "hacks" people
+      // love to model such as cross participant / sub process
+      // associations
+      parentElement = this._canvas.findRoot(parentElement);
+    }
+
+    this._canvas.addConnection(element, parentElement, parentIndex);
+  } else {
+    throw new Error(
+      `unknown di ${ elementToString(di) } for element ${ elementToString(semantic) }`
+    );
+  }
+
+  // (optional) LABEL
+  if (isLabelExternal(semantic) && getLabel(element)) {
+    this.addLabel(semantic, di, element);
+  }
+
+  this._eventBus.fire('bpmnElement.added', { element: element });
+
+  return element;
+};
+
+
+/**
+ * Attach a boundary element to the given host.
+ *
+ * @param {ModdleElement} boundarySemantic
+ * @param {Shape} boundaryElement
+ */
+BpmnImporter.prototype._attachBoundary = function(boundarySemantic, boundaryElement) {
+  var hostSemantic = boundarySemantic.attachedToRef;
+
+  if (!hostSemantic) {
+    throw new Error(
+      `missing ${ elementToString(boundarySemantic) }#attachedToRef`
+    );
+  }
+
+  var host = this._elementRegistry.get(hostSemantic.id),
+      attachers = host && host.attachers;
+
+  if (!host) {
+    throw notYetDrawn(boundarySemantic, hostSemantic, 'attachedToRef');
+  }
+
+  // wire element.host <> host.attachers
+  boundaryElement.host = host;
+
+  if (!attachers) {
+    host.attachers = attachers = [];
+  }
+
+  if (attachers.indexOf(boundaryElement) === -1) {
+    attachers.push(boundaryElement);
+  }
+};
+
+
+/**
+ * Add a label to a given element.
+ *
+ * @param {ModdleElement} semantic
+ * @param {ModdleElement} di
+ * @param {Element} element
+ *
+ * @return {Label}
+ */
+BpmnImporter.prototype.addLabel = function(semantic, di, element) {
+  var bounds,
+      text,
+      label;
+
+  bounds = getExternalLabelBounds(di, element);
+
+  text = getLabel(element);
+
+  if (text) {
+
+    // get corrected bounds from actual layouted text
+    bounds = this._textRenderer.getExternalLabelBounds(bounds, text);
+  }
+
+  label = this._elementFactory.createLabel(elementData(semantic, di, {
+    id: semantic.id + '_label',
+    labelTarget: element,
+    type: 'label',
+    hidden: element.hidden || !getLabel(element),
+    x: Math.round(bounds.x),
+    y: Math.round(bounds.y),
+    width: Math.round(bounds.width),
+    height: Math.round(bounds.height)
+  }));
+
+  return this._canvas.addShape(label, element.parent);
+};
+
+/**
+ * Get the source or target of the given connection.
+ *
+ * @param {ModdleElement} semantic
+ * @param {'source' | 'target'} side
+ *
+ * @return {Element}
+ */
+BpmnImporter.prototype._getConnectedElement = function(semantic, side) {
+
+  var element,
+      refSemantic,
+      type = semantic.$type;
+
+  refSemantic = semantic[side + 'Ref'];
+
+  // handle mysterious isMany DataAssociation#sourceRef
+  if (side === 'source' && type === 'bpmn:DataInputAssociation') {
+    refSemantic = refSemantic && refSemantic[0];
+  }
+
+  // fix source / target for DataInputAssociation / DataOutputAssociation
+  if (side === 'source' && type === 'bpmn:DataOutputAssociation' ||
+      side === 'target' && type === 'bpmn:DataInputAssociation') {
+
+    refSemantic = semantic.$parent;
+  }
+
+  element = refSemantic && this._getElement(refSemantic);
+
+  if (element) {
+    return element;
+  }
+
+  if (refSemantic) {
+    throw notYetDrawn(semantic, refSemantic, side + 'Ref');
+  } else {
+    throw new Error(
+      `${ elementToString(semantic) }#${ side } Ref not specified`
+    );
+  }
+};
+
+BpmnImporter.prototype._getSource = function(semantic) {
+  return this._getConnectedElement(semantic, 'source');
+};
+
+BpmnImporter.prototype._getTarget = function(semantic) {
+  return this._getConnectedElement(semantic, 'target');
+};
+
+
+BpmnImporter.prototype._getElement = function(semantic) {
+  return this._elementRegistry.get(semantic.id);
+};
+
+
+// helpers ////////////////////
+
+function isPointInsideBBox(bbox, point) {
+  var x = point.x,
+      y = point.y;
+
+  return x >= bbox.x &&
+    x <= bbox.x + bbox.width &&
+    y >= bbox.y &&
+    y <= bbox.y + bbox.height;
+}
+
+function isFrameElement(semantic) {
+  return is(semantic, 'bpmn:Group');
+}

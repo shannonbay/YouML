@@ -1,1 +1,269 @@
-import{is}from"../../../util/ModelUtil";import{isExpanded,isHorizontal}from"../../../util/DiUtil";import{asTRBL}from"diagram-js/lib/layout/LayoutUtil";import{collectLanes,getLanesRoot}from"../util/LaneUtil";var HIGH_PRIORITY=1500;export var GROUP_MIN_DIMENSIONS={width:140,height:120};export var LANE_MIN_DIMENSIONS={width:300,height:60};export var VERTICAL_LANE_MIN_DIMENSIONS={width:60,height:300};export var PARTICIPANT_MIN_DIMENSIONS={width:300,height:150};export var VERTICAL_PARTICIPANT_MIN_DIMENSIONS={width:150,height:300};export var SUB_PROCESS_MIN_DIMENSIONS={width:140,height:120};export var TEXT_ANNOTATION_MIN_DIMENSIONS={width:50,height:30};export default function ResizeBehavior(t){t.on("resize.start",HIGH_PRIORITY,(function(t){var i=t.context,o=i.shape,e=i.direction,a=i.balanced;(is(o,"bpmn:Lane")||is(o,"bpmn:Participant"))&&(i.resizeConstraints=getParticipantResizeConstraints(o,e,a)),is(o,"bpmn:SubProcess")&&isExpanded(o)&&(i.minDimensions=SUB_PROCESS_MIN_DIMENSIONS),is(o,"bpmn:TextAnnotation")&&(i.minDimensions=TEXT_ANNOTATION_MIN_DIMENSIONS)}))}ResizeBehavior.$inject=["eventBus"];var abs=Math.abs,min=Math.min,max=Math.max;function addToTrbl(t,i,o,e){var a=t[i];t[i]=void 0===a?o:e(o,a)}function addMin(t,i,o){return addToTrbl(t,i,o,min)}function addMax(t,i,o){return addToTrbl(t,i,o,max)}var LANE_PADDING={top:20,left:50,right:20,bottom:20},VERTICAL_LANE_PADDING={top:50,left:20,right:20,bottom:20};export function getParticipantResizeConstraints(t,i,o){var e=getLanesRoot(t),a=!0,r=!0,n=collectLanes(e,[e]),s=asTRBL(t),h={},d={},I=isHorizontal(t),N=I?LANE_MIN_DIMENSIONS:VERTICAL_LANE_MIN_DIMENSIONS;/n/.test(i)?d.top=s.bottom-N.height:/e/.test(i)?d.right=s.left+N.width:/s/.test(i)?d.bottom=s.top+N.height:/w/.test(i)&&(d.left=s.right-N.width),n.forEach((function(t){var e=asTRBL(t);I?(e.top<s.top-10&&(a=!1),e.bottom>s.bottom+10&&(r=!1)):(e.left<s.left-10&&(a=!1),e.right>s.right+10&&(r=!1)),/n/.test(i)&&(o&&abs(s.top-e.bottom)<10&&addMax(h,"top",e.top+N.height),abs(s.top-e.top)<5&&addMin(d,"top",e.bottom-N.height)),/e/.test(i)&&(o&&abs(s.right-e.left)<10&&addMin(h,"right",e.right-N.width),abs(s.right-e.right)<5&&addMax(d,"right",e.left+N.width)),/s/.test(i)&&(o&&abs(s.bottom-e.top)<10&&addMin(h,"bottom",e.bottom-N.height),abs(s.bottom-e.bottom)<5&&addMax(d,"bottom",e.top+N.height)),/w/.test(i)&&(o&&abs(s.left-e.right)<10&&addMax(h,"left",e.left+N.width),abs(s.left-e.left)<5&&addMin(d,"left",e.right-N.width))}));var m=e.children.filter((function(t){return!t.hidden&&!t.waypoints&&(is(t,"bpmn:FlowElement")||is(t,"bpmn:Artifact"))})),p=I?LANE_PADDING:VERTICAL_LANE_PADDING;return m.forEach((function(t){var o=asTRBL(t);!/n/.test(i)||I&&!a||addMin(d,"top",o.top-p.top),/e/.test(i)&&(I||r)&&addMax(d,"right",o.right+p.right),!/s/.test(i)||I&&!r||addMax(d,"bottom",o.bottom+p.bottom),/w/.test(i)&&(I||a)&&addMin(d,"left",o.left-p.left)})),{min:d,max:h}}
+import { is } from '../../../util/ModelUtil';
+
+import {
+  isExpanded,
+  isHorizontal
+} from '../../../util/DiUtil';
+
+import {
+  asTRBL
+} from 'diagram-js/lib/layout/LayoutUtil';
+
+import {
+  collectLanes,
+  getLanesRoot
+} from '../util/LaneUtil';
+
+var HIGH_PRIORITY = 1500;
+
+/**
+ * @typedef {import('diagram-js/lib/core/EventBus').default} EventBus
+ *
+ * @typedef {import('../../../model/Types').Shape} Shape
+ *
+ * @typedef {import('diagram-js/lib/util/Types').Dimensions} Dimensions
+ * @typedef {import('diagram-js/lib/util/Types').Direction} Direction
+ * @typedef {import('diagram-js/lib/util/Types').RectTRBL} RectTRBL
+ */
+
+/**
+ * @type {Dimensions}
+ */
+export var GROUP_MIN_DIMENSIONS = { width: 140, height: 120 };
+
+/**
+ * @type {Dimensions}
+ */
+export var LANE_MIN_DIMENSIONS = { width: 300, height: 60 };
+
+/**
+ * @type {Dimensions}
+ */
+export var VERTICAL_LANE_MIN_DIMENSIONS = { width: 60, height: 300 };
+
+/**
+ * @type {Dimensions}
+ */
+export var PARTICIPANT_MIN_DIMENSIONS = { width: 300, height: 150 };
+
+/**
+ * @type {Dimensions}
+ */
+export var VERTICAL_PARTICIPANT_MIN_DIMENSIONS = { width: 150, height: 300 };
+
+/**
+ * @type {Dimensions}
+ */
+export var SUB_PROCESS_MIN_DIMENSIONS = { width: 140, height: 120 };
+
+/**
+ * @type {Dimensions}
+ */
+export var TEXT_ANNOTATION_MIN_DIMENSIONS = { width: 50, height: 30 };
+
+/**
+ * Set minimum bounds/resize constraints on resize.
+ *
+ * @param {EventBus} eventBus
+ */
+export default function ResizeBehavior(eventBus) {
+  eventBus.on('resize.start', HIGH_PRIORITY, function(event) {
+    var context = event.context,
+        shape = context.shape,
+        direction = context.direction,
+        balanced = context.balanced;
+
+    if (is(shape, 'bpmn:Lane') || is(shape, 'bpmn:Participant')) {
+      context.resizeConstraints = getParticipantResizeConstraints(shape, direction, balanced);
+    }
+
+    if (is(shape, 'bpmn:SubProcess') && isExpanded(shape)) {
+      context.minDimensions = SUB_PROCESS_MIN_DIMENSIONS;
+    }
+
+    if (is(shape, 'bpmn:TextAnnotation')) {
+      context.minDimensions = TEXT_ANNOTATION_MIN_DIMENSIONS;
+    }
+  });
+}
+
+ResizeBehavior.$inject = [ 'eventBus' ];
+
+
+var abs = Math.abs,
+    min = Math.min,
+    max = Math.max;
+
+
+function addToTrbl(trbl, attr, value, choice) {
+  var current = trbl[attr];
+
+  // make sure to set the value if it does not exist
+  // or apply the correct value by comparing against
+  // choice(value, currentValue)
+  trbl[attr] = current === undefined ? value : choice(value, current);
+}
+
+function addMin(trbl, attr, value) {
+  return addToTrbl(trbl, attr, value, min);
+}
+
+function addMax(trbl, attr, value) {
+  return addToTrbl(trbl, attr, value, max);
+}
+
+var LANE_PADDING = { top: 20, left: 50, right: 20, bottom: 20 },
+    VERTICAL_LANE_PADDING = { top: 50, left: 20, right: 20, bottom: 20 };
+
+/**
+ * @param {Shape} laneShape
+ * @param {Direction} resizeDirection
+ * @param {boolean} [balanced=false]
+ *
+ * @return { {
+ *   min: RectTRBL;
+ *   max: RectTRBL;
+ * } }
+ */
+export function getParticipantResizeConstraints(laneShape, resizeDirection, balanced) {
+  var lanesRoot = getLanesRoot(laneShape);
+
+  var isFirst = true,
+      isLast = true;
+
+  var allLanes = collectLanes(lanesRoot, [ lanesRoot ]);
+
+  var laneTrbl = asTRBL(laneShape);
+
+  var maxTrbl = {},
+      minTrbl = {};
+
+  var isHorizontalLane = isHorizontal(laneShape);
+
+  var minDimensions = isHorizontalLane ? LANE_MIN_DIMENSIONS : VERTICAL_LANE_MIN_DIMENSIONS;
+
+  if (/n/.test(resizeDirection)) {
+    minTrbl.top = laneTrbl.bottom - minDimensions.height;
+  } else
+  if (/e/.test(resizeDirection)) {
+    minTrbl.right = laneTrbl.left + minDimensions.width;
+  } else
+  if (/s/.test(resizeDirection)) {
+    minTrbl.bottom = laneTrbl.top + minDimensions.height;
+  } else
+  if (/w/.test(resizeDirection)) {
+    minTrbl.left = laneTrbl.right - minDimensions.width;
+  }
+
+  // min/max size based on related lanes
+  allLanes.forEach(function(other) {
+
+    var otherTrbl = asTRBL(other);
+
+    // lane flags
+    if (isHorizontalLane) {
+      if (otherTrbl.top < (laneTrbl.top - 10)) {
+        isFirst = false;
+      }
+      if (otherTrbl.bottom > (laneTrbl.bottom + 10)) {
+        isLast = false;
+      }
+    }
+    else {
+      if (otherTrbl.left < (laneTrbl.left - 10)) {
+        isFirst = false;
+      }
+      if (otherTrbl.right > (laneTrbl.right + 10)) {
+        isLast = false;
+      }
+    }
+
+    if (/n/.test(resizeDirection)) {
+
+      // max top size (based on next element)
+      if (balanced && abs(laneTrbl.top - otherTrbl.bottom) < 10) {
+        addMax(maxTrbl, 'top', otherTrbl.top + minDimensions.height);
+      }
+
+      // min top size (based on self or nested element)
+      if (abs(laneTrbl.top - otherTrbl.top) < 5) {
+        addMin(minTrbl, 'top', otherTrbl.bottom - minDimensions.height);
+      }
+    }
+
+    if (/e/.test(resizeDirection)) {
+
+      // max right size (based on previous element)
+      if (balanced && abs(laneTrbl.right - otherTrbl.left) < 10) {
+        addMin(maxTrbl, 'right', otherTrbl.right - minDimensions.width);
+      }
+
+      // min right size (based on self or nested element)
+      if (abs(laneTrbl.right - otherTrbl.right) < 5) {
+        addMax(minTrbl, 'right', otherTrbl.left + minDimensions.width);
+      }
+    }
+
+    if (/s/.test(resizeDirection)) {
+
+      // max bottom size (based on previous element)
+      if (balanced && abs(laneTrbl.bottom - otherTrbl.top) < 10) {
+        addMin(maxTrbl, 'bottom', otherTrbl.bottom - minDimensions.height);
+      }
+
+      // min bottom size (based on self or nested element)
+      if (abs(laneTrbl.bottom - otherTrbl.bottom) < 5) {
+        addMax(minTrbl, 'bottom', otherTrbl.top + minDimensions.height);
+      }
+    }
+
+    if (/w/.test(resizeDirection)) {
+
+      // max left size (based on next element)
+      if (balanced && abs(laneTrbl.left - otherTrbl.right) < 10) {
+        addMax(maxTrbl, 'left', otherTrbl.left + minDimensions.width);
+      }
+
+      // min left size (based on self or nested element)
+      if (abs(laneTrbl.left - otherTrbl.left) < 5) {
+        addMin(minTrbl, 'left', otherTrbl.right - minDimensions.width);
+      }
+    }
+  });
+
+  // max top/bottom/left/right size based on flow nodes
+  var flowElements = lanesRoot.children.filter(function(s) {
+    return !s.hidden && !s.waypoints && (is(s, 'bpmn:FlowElement') || is(s, 'bpmn:Artifact'));
+  });
+
+  var padding = isHorizontalLane ? LANE_PADDING : VERTICAL_LANE_PADDING;
+
+  flowElements.forEach(function(flowElement) {
+
+    var flowElementTrbl = asTRBL(flowElement);
+
+    // vertical lane will resize from top with respect to flow element irrespective of first or last lane
+    if (/n/.test(resizeDirection) && (!isHorizontalLane || isFirst)) {
+      addMin(minTrbl, 'top', flowElementTrbl.top - padding.top);
+    }
+
+    // horizonal lane will resize from right with respect to flow element irrespective of first or last lane
+    if (/e/.test(resizeDirection) && (isHorizontalLane || isLast)) {
+      addMax(minTrbl, 'right', flowElementTrbl.right + padding.right);
+    }
+
+    // vertical lane will resize from bottom with respect to flow element irrespective of first or last lane
+    if (/s/.test(resizeDirection) && (!isHorizontalLane || isLast)) {
+      addMax(minTrbl, 'bottom', flowElementTrbl.bottom + padding.bottom);
+    }
+
+    // horizonal lane will resize from left with respect to flow element irrespective of first or last lane
+    if (/w/.test(resizeDirection) && (isHorizontalLane || isFirst)) {
+      addMin(minTrbl, 'left', flowElementTrbl.left - padding.left);
+    }
+  });
+  return {
+    min: minTrbl,
+    max: maxTrbl
+  };
+}

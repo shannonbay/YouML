@@ -1,1 +1,22 @@
-define(["../data/var/dataPriv"],(function(a){"use strict";return function(t,e){for(var l=0,n=t.length;l<n;l++)a.set(t[l],"globalEval",!e||a.get(e[l],"globalEval"))}}));
+define( [
+	"../data/var/dataPriv"
+], function( dataPriv ) {
+
+"use strict";
+
+// Mark scripts as having already been evaluated
+function setGlobalEval( elems, refElements ) {
+	var i = 0,
+		l = elems.length;
+
+	for ( ; i < l; i++ ) {
+		dataPriv.set(
+			elems[ i ],
+			"globalEval",
+			!refElements || dataPriv.get( refElements[ i ], "globalEval" )
+		);
+	}
+}
+
+return setGlobalEval;
+} );

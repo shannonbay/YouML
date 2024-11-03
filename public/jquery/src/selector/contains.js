@@ -1,1 +1,21 @@
-define(["../core"],(function(n){"use strict";n.contains=function(n,o){var e=o&&o.parentNode;return n===e||!(!e||1!==e.nodeType||!(n.contains?n.contains(e):n.compareDocumentPosition&&16&n.compareDocumentPosition(e)))}}));
+define( [
+	"../core"
+], function( jQuery ) {
+
+"use strict";
+
+// Note: an element does not contain itself
+jQuery.contains = function( a, b ) {
+	var bup = b && b.parentNode;
+
+	return a === bup || !!( bup && bup.nodeType === 1 && (
+
+		// Support: IE 9 - 11+
+		// IE doesn't have `contains` on SVG.
+		a.contains ?
+			a.contains( bup ) :
+			a.compareDocumentPosition && a.compareDocumentPosition( bup ) & 16
+	) );
+};
+
+} );

@@ -1,1 +1,262 @@
-import{assign}from"min-dash";import{is}from"./ModelUtil";import{isLabel}from"diagram-js/lib/util/ModelUtil";export{isLabel}from"diagram-js/lib/util/ModelUtil";export var DEFAULT_LABEL_SIZE={width:90,height:20};export var FLOW_LABEL_INDENT=15;export function isLabelExternal(t){return is(t,"bpmn:Event")||is(t,"bpmn:Gateway")||is(t,"bpmn:DataStoreReference")||is(t,"bpmn:DataObjectReference")||is(t,"bpmn:DataInput")||is(t,"bpmn:DataOutput")||is(t,"bpmn:SequenceFlow")||is(t,"bpmn:MessageFlow")||is(t,"bpmn:Group")}export function hasExternalLabel(t){return isLabel(t.label)}export function getFlowLabelPosition(t){var e=t.length/2-1,a=t[Math.floor(e)],i=t[Math.ceil(e+.01)],n=getWaypointsMid(t),r=Math.atan((i.y-a.y)/(i.x-a.x)),o=n.x,l=n.y;return Math.abs(r)<Math.PI/2?l-=FLOW_LABEL_INDENT:o+=FLOW_LABEL_INDENT,{x:o,y:l}}export function getWaypointsMid(t){var e=t.length/2-1,a=t[Math.floor(e)],i=t[Math.ceil(e+.01)];return{x:a.x+(i.x-a.x)/2,y:a.y+(i.y-a.y)/2}}export function getExternalLabelMid(t){return t.waypoints?getFlowLabelPosition(t.waypoints):is(t,"bpmn:Group")?{x:t.x+t.width/2,y:t.y+DEFAULT_LABEL_SIZE.height/2}:{x:t.x+t.width/2,y:t.y+t.height+DEFAULT_LABEL_SIZE.height/2}}export function getExternalLabelBounds(t,e){var a,i,n,r=t.label;return r&&r.bounds?(n=r.bounds,i={width:Math.max(DEFAULT_LABEL_SIZE.width,n.width),height:n.height},a={x:n.x+n.width/2,y:n.y+n.height/2}):(a=getExternalLabelMid(e),i=DEFAULT_LABEL_SIZE),assign({x:a.x-i.width/2,y:a.y-i.height/2},i)}function getLabelAttr(t){return is(t,"bpmn:FlowElement")||is(t,"bpmn:Participant")||is(t,"bpmn:Lane")||is(t,"bpmn:SequenceFlow")||is(t,"bpmn:MessageFlow")||is(t,"bpmn:DataInput")||is(t,"bpmn:DataOutput")?"name":is(t,"bpmn:TextAnnotation")?"text":is(t,"bpmn:Group")?"categoryValueRef":void 0}function getCategoryValue(t){var e=t.categoryValueRef;return e&&e.value||""}export function getLabel(t){var e=t.businessObject,a=getLabelAttr(e);if(a)return"categoryValueRef"===a?getCategoryValue(e):e[a]||""}export function setLabel(t,e){var a=t.businessObject,i=getLabelAttr(a);return i&&("categoryValueRef"===i?a.categoryValueRef.value=e:a[i]=e),t}
+import {
+  assign
+} from 'min-dash';
+
+import { is } from './ModelUtil';
+
+import { isLabel } from 'diagram-js/lib/util/ModelUtil';
+
+export { isLabel } from 'diagram-js/lib/util/ModelUtil';
+
+/**
+ * @typedef {import('diagram-js/lib/util/Types').Point} Point
+ * @typedef {import('diagram-js/lib/util/Types').Rect} Rect
+ *
+ * @typedef {import('../model/Types').Element} Element
+ * @typedef {import('../model/Types').ModdleElement} ModdleElement
+ */
+
+export var DEFAULT_LABEL_SIZE = {
+  width: 90,
+  height: 20
+};
+
+export var FLOW_LABEL_INDENT = 15;
+
+
+/**
+ * Return true if the given semantic has an external label.
+ *
+ * @param {Element} semantic
+ *
+ * @return {boolean}
+ */
+export function isLabelExternal(semantic) {
+  return is(semantic, 'bpmn:Event') ||
+         is(semantic, 'bpmn:Gateway') ||
+         is(semantic, 'bpmn:DataStoreReference') ||
+         is(semantic, 'bpmn:DataObjectReference') ||
+         is(semantic, 'bpmn:DataInput') ||
+         is(semantic, 'bpmn:DataOutput') ||
+         is(semantic, 'bpmn:SequenceFlow') ||
+         is(semantic, 'bpmn:MessageFlow') ||
+         is(semantic, 'bpmn:Group');
+}
+
+/**
+ * Return true if the given element has an external label.
+ *
+ * @param {Element} element
+ *
+ * @return {boolean}
+ */
+export function hasExternalLabel(element) {
+  return isLabel(element.label);
+}
+
+/**
+ * Get the position of a sequence flow label.
+ *
+ * @param  {Point[]} waypoints
+ *
+ * @return {Point}
+ */
+export function getFlowLabelPosition(waypoints) {
+
+  // get the waypoints mid
+  var mid = waypoints.length / 2 - 1;
+
+  var first = waypoints[Math.floor(mid)];
+  var second = waypoints[Math.ceil(mid + 0.01)];
+
+  // get position
+  var position = getWaypointsMid(waypoints);
+
+  // calculate angle
+  var angle = Math.atan((second.y - first.y) / (second.x - first.x));
+
+  var x = position.x,
+      y = position.y;
+
+  if (Math.abs(angle) < Math.PI / 2) {
+    y -= FLOW_LABEL_INDENT;
+  } else {
+    x += FLOW_LABEL_INDENT;
+  }
+
+  return { x: x, y: y };
+}
+
+
+/**
+ * Get the middle of a number of waypoints.
+ *
+ * @param  {Point[]} waypoints
+ *
+ * @return {Point}
+ */
+export function getWaypointsMid(waypoints) {
+
+  var mid = waypoints.length / 2 - 1;
+
+  var first = waypoints[Math.floor(mid)];
+  var second = waypoints[Math.ceil(mid + 0.01)];
+
+  return {
+    x: first.x + (second.x - first.x) / 2,
+    y: first.y + (second.y - first.y) / 2
+  };
+}
+
+/**
+ * Get the middle of the external label of an element.
+ *
+ * @param {Element} element
+ *
+ * @return {Point}
+ */
+export function getExternalLabelMid(element) {
+
+  if (element.waypoints) {
+    return getFlowLabelPosition(element.waypoints);
+  } else if (is(element, 'bpmn:Group')) {
+    return {
+      x: element.x + element.width / 2,
+      y: element.y + DEFAULT_LABEL_SIZE.height / 2
+    };
+  } else {
+    return {
+      x: element.x + element.width / 2,
+      y: element.y + element.height + DEFAULT_LABEL_SIZE.height / 2
+    };
+  }
+}
+
+
+/**
+ * Return the bounds of an elements label, parsed from the elements DI or
+ * generated from its bounds.
+ *
+ * @param {ModdleElement} di
+ * @param {Element} element
+ *
+ * @return {Rect}
+ */
+export function getExternalLabelBounds(di, element) {
+
+  var mid,
+      size,
+      bounds,
+      label = di.label;
+
+  if (label && label.bounds) {
+    bounds = label.bounds;
+
+    size = {
+      width: Math.max(DEFAULT_LABEL_SIZE.width, bounds.width),
+      height: bounds.height
+    };
+
+    mid = {
+      x: bounds.x + bounds.width / 2,
+      y: bounds.y + bounds.height / 2
+    };
+  } else {
+
+    mid = getExternalLabelMid(element);
+
+    size = DEFAULT_LABEL_SIZE;
+  }
+
+  return assign({
+    x: mid.x - size.width / 2,
+    y: mid.y - size.height / 2
+  }, size);
+}
+
+/**
+ * @param {ModdleElement} semantic
+ *
+ * @returns {string}
+ */
+function getLabelAttr(semantic) {
+  if (
+    is(semantic, 'bpmn:FlowElement') ||
+    is(semantic, 'bpmn:Participant') ||
+    is(semantic, 'bpmn:Lane') ||
+    is(semantic, 'bpmn:SequenceFlow') ||
+    is(semantic, 'bpmn:MessageFlow') ||
+    is(semantic, 'bpmn:DataInput') ||
+    is(semantic, 'bpmn:DataOutput')
+  ) {
+    return 'name';
+  }
+
+  if (is(semantic, 'bpmn:TextAnnotation')) {
+    return 'text';
+  }
+
+  if (is(semantic, 'bpmn:Group')) {
+    return 'categoryValueRef';
+  }
+}
+
+/**
+ * @param {ModdleElement} semantic
+ *
+ * @returns {string}
+ */
+function getCategoryValue(semantic) {
+  var categoryValueRef = semantic['categoryValueRef'];
+
+  if (!categoryValueRef) {
+    return '';
+  }
+
+
+  return categoryValueRef.value || '';
+}
+
+/**
+ * @param {Element} element
+ *
+ * @return {string}
+ */
+export function getLabel(element) {
+  var semantic = element.businessObject,
+      attr = getLabelAttr(semantic);
+
+  if (attr) {
+
+    if (attr === 'categoryValueRef') {
+
+      return getCategoryValue(semantic);
+    }
+
+    return semantic[attr] || '';
+  }
+}
+
+
+/**
+ * @param {Element} element
+ * @param {string} text
+ *
+ * @return {Element}
+ */
+export function setLabel(element, text) {
+  var semantic = element.businessObject,
+      attr = getLabelAttr(semantic);
+
+  if (attr) {
+
+    if (attr === 'categoryValueRef') {
+      semantic['categoryValueRef'].value = text;
+    } else {
+      semantic[attr] = text;
+    }
+
+  }
+
+  return element;
+}

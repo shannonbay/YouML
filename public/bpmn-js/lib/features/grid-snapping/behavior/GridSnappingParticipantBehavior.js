@@ -1,1 +1,46 @@
-import{is}from"../../../util/ModelUtil";var HIGHER_PRIORITY=1750;export default function GridSnappingParticipantBehavior(t,i,n){i.on(["create.start","shape.move.start"],HIGHER_PRIORITY,(function(i){var a=i.context,e=a.shape,r=t.getRootElement();is(e,"bpmn:Participant")&&is(r,"bpmn:Process")&&r.children.length&&a.createConstraints&&(e.width=n.snapValue(e.width,{min:e.width}),e.height=n.snapValue(e.height,{min:e.height}))}))}GridSnappingParticipantBehavior.$inject=["canvas","eventBus","gridSnapping"];
+import { is } from '../../../util/ModelUtil';
+
+/**
+ * @typedef {import('diagram-js/lib/core/Canvas').default} Canvas
+ * @typedef {import('diagram-js/lib/core/EventBus').default} EventBus
+ * @typedef {import('diagram-js/lib/features/grid-snapping/GridSnapping').default} GridSnapping
+ */
+
+var HIGHER_PRIORITY = 1750;
+
+/**
+ * @param {Canvas} canvas
+ * @param {EventBus} eventBus
+ * @param {GridSnapping} gridSnapping
+ */
+export default function GridSnappingParticipantBehavior(canvas, eventBus, gridSnapping) {
+  eventBus.on([
+    'create.start',
+    'shape.move.start'
+  ], HIGHER_PRIORITY, function(event) {
+    var context = event.context,
+        shape = context.shape,
+        rootElement = canvas.getRootElement();
+
+    if (!is(shape, 'bpmn:Participant') ||
+      !is(rootElement, 'bpmn:Process') ||
+      !rootElement.children.length) {
+      return;
+    }
+
+    var createConstraints = context.createConstraints;
+
+    if (!createConstraints) {
+      return;
+    }
+
+    shape.width = gridSnapping.snapValue(shape.width, { min: shape.width });
+    shape.height = gridSnapping.snapValue(shape.height, { min: shape.height });
+  });
+}
+
+GridSnappingParticipantBehavior.$inject = [
+  'canvas',
+  'eventBus',
+  'gridSnapping'
+];

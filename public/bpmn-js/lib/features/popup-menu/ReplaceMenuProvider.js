@@ -1,1 +1,680 @@
-import{getBusinessObject,is}from"../../util/ModelUtil";import{isEventSubProcess,isExpanded}from"../../util/DiUtil";import{isDifferentType}from"./util/TypeUtil";import{forEach,filter,isArray}from"min-dash";import*as replaceOptions from"../replace/ReplaceOptions";import{canBeNonInterrupting,getInterruptingProperty}from"../modeling/behavior/util/NonInterruptingUtil";import Icons from"./util/Icons";export default function ReplaceMenuProvider(e,t,i,n,r,s,a,o){this._bpmnFactory=e,this._popupMenu=t,this._modeling=i,this._moddle=n,this._bpmnReplace=r,this._rules=s,this._translate=a,this._moddleCopy=o,this._register()}ReplaceMenuProvider.$inject=["bpmnFactory","popupMenu","modeling","moddle","bpmnReplace","rules","translate","moddleCopy"],ReplaceMenuProvider.prototype._register=function(){this._popupMenu.registerProvider("bpmn-replace",this)},ReplaceMenuProvider.prototype.getPopupMenuEntries=function(e){var t=e.businessObject,i=this._rules,n=[];if(isArray(e)||!i.allowed("shape.replace",{element:e}))return{};var r=isDifferentType(e);return is(t,"bpmn:DataObjectReference")?this._createEntries(e,replaceOptions.DATA_OBJECT_REFERENCE):is(t,"bpmn:DataStoreReference")&&!is(e.parent,"bpmn:Collaboration")?this._createEntries(e,replaceOptions.DATA_STORE_REFERENCE):is(t,"bpmn:StartEvent")&&!is(t.$parent,"bpmn:SubProcess")?(n=filter(replaceOptions.START_EVENT,r),this._createEntries(e,n)):is(t,"bpmn:Participant")?(n=filter(replaceOptions.PARTICIPANT,(function(t){return isExpanded(e)!==t.target.isExpanded})),this._createEntries(e,n)):is(t,"bpmn:StartEvent")&&isEventSubProcess(t.$parent)?(n=filter(replaceOptions.EVENT_SUB_PROCESS_START_EVENT,(function(e){var i=!1!==e.target.isInterrupting,n=t.isInterrupting===i;return r(e)||!r(e)&&!n})),this._createEntries(e,n)):is(t,"bpmn:StartEvent")&&!isEventSubProcess(t.$parent)&&is(t.$parent,"bpmn:SubProcess")?(n=filter(replaceOptions.START_EVENT_SUB_PROCESS,r),this._createEntries(e,n)):is(t,"bpmn:EndEvent")?(n=filter(replaceOptions.END_EVENT,(function(e){return!("bpmn:CancelEventDefinition"==e.target.eventDefinitionType&&!is(t.$parent,"bpmn:Transaction"))&&r(e)})),this._createEntries(e,n)):is(t,"bpmn:BoundaryEvent")?(n=filter(replaceOptions.BOUNDARY_EVENT,(function(e){var i=e.target;if("bpmn:CancelEventDefinition"==i.eventDefinitionType&&!is(t.attachedToRef,"bpmn:Transaction"))return!1;var n=!1!==i.cancelActivity,s=t.cancelActivity==n;return r(e)||!r(e)&&!s})),this._createEntries(e,n)):is(t,"bpmn:IntermediateCatchEvent")||is(t,"bpmn:IntermediateThrowEvent")?(n=filter(replaceOptions.INTERMEDIATE_EVENT,r),this._createEntries(e,n)):is(t,"bpmn:Gateway")?(n=filter(replaceOptions.GATEWAY,r),this._createEntries(e,n)):is(t,"bpmn:Transaction")?(n=filter(replaceOptions.TRANSACTION,r),this._createEntries(e,n)):isEventSubProcess(t)&&isExpanded(e)?(n=filter(replaceOptions.EVENT_SUB_PROCESS,r),this._createEntries(e,n)):is(t,"bpmn:SubProcess")&&isExpanded(e)?(n=filter(replaceOptions.SUBPROCESS_EXPANDED,r),this._createEntries(e,n)):is(t,"bpmn:AdHocSubProcess")&&!isExpanded(e)?(n=filter(replaceOptions.TASK,(function(e){var t=e.target,i="bpmn:SubProcess"===t.type,n=!0===t.isExpanded;return isDifferentType(t,t)&&(!i||n)})),this._createEntries(e,n)):is(t,"bpmn:SequenceFlow")?this._createSequenceFlowEntries(e,replaceOptions.SEQUENCE_FLOW):is(t,"bpmn:FlowNode")?(n=filter(replaceOptions.TASK,r),is(t,"bpmn:SubProcess")&&!isExpanded(e)&&(n=filter(n,(function(e){return"Sub-process (collapsed)"!==e.label}))),this._createEntries(e,n)):{}},ReplaceMenuProvider.prototype.getPopupMenuHeaderEntries=function(e){var t={};return is(e,"bpmn:Activity")&&!isEventSubProcess(e)&&(t={...t,...this._getLoopCharacteristicsHeaderEntries(e)}),is(e,"bpmn:DataObjectReference")&&(t={...t,...this._getCollectionHeaderEntries(e)}),is(e,"bpmn:Participant")&&(t={...t,...this._getParticipantMultiplicityHeaderEntries(e)}),!is(e,"bpmn:SubProcess")||is(e,"bpmn:Transaction")||isEventSubProcess(e)||(t={...t,...this._getAdHocHeaderEntries(e)}),canBeNonInterrupting(e)&&(t={...t,...this._getNonInterruptingHeaderEntries(e)}),t},ReplaceMenuProvider.prototype._createEntries=function(e,t){var i={},n=this;return forEach(t,(function(t){i[t.actionName]=n._createEntry(t,e)})),i},ReplaceMenuProvider.prototype._createSequenceFlowEntries=function(e,t){var i=getBusinessObject(e),n={},r=this._modeling,s=this._moddle,a=this;return forEach(t,(function(t){switch(t.actionName){case"replace-with-default-flow":i.sourceRef.default!==i&&(is(i.sourceRef,"bpmn:ExclusiveGateway")||is(i.sourceRef,"bpmn:InclusiveGateway")||is(i.sourceRef,"bpmn:ComplexGateway")||is(i.sourceRef,"bpmn:Activity"))&&(n={...n,[t.actionName]:a._createEntry(t,e,(function(){r.updateProperties(e.source,{default:i})}))});break;case"replace-with-conditional-flow":!i.conditionExpression&&is(i.sourceRef,"bpmn:Activity")&&(n={...n,[t.actionName]:a._createEntry(t,e,(function(){var t=s.create("bpmn:FormalExpression",{body:""});r.updateProperties(e,{conditionExpression:t})}))});break;default:is(i.sourceRef,"bpmn:Activity")&&i.conditionExpression&&(n={...n,[t.actionName]:a._createEntry(t,e,(function(){r.updateProperties(e,{conditionExpression:void 0})}))}),(is(i.sourceRef,"bpmn:ExclusiveGateway")||is(i.sourceRef,"bpmn:InclusiveGateway")||is(i.sourceRef,"bpmn:ComplexGateway")||is(i.sourceRef,"bpmn:Activity"))&&i.sourceRef.default===i&&(n={...n,[t.actionName]:a._createEntry(t,e,(function(){r.updateProperties(e.source,{default:void 0})}))})}})),n},ReplaceMenuProvider.prototype._createEntry=function(e,t,i){var n=this._translate,r=this._bpmnReplace.replaceElement,s=e.label;return s&&"function"==typeof s&&(s=s(t)),i=i||function(){return r(t,e.target)},{label:n(s),className:e.className,action:i}},ReplaceMenuProvider.prototype._getLoopCharacteristicsHeaderEntries=function(e){var t=this,i=this._translate;function n(i,n){if(n.active)return void t._modeling.updateProperties(e,{loopCharacteristics:void 0});const r=e.businessObject.get("loopCharacteristics"),s=t._moddle.create(n.options.loopCharacteristics);r&&t._moddleCopy.copyElement(r,s),s.set("isSequential",n.options.isSequential),t._modeling.updateProperties(e,{loopCharacteristics:s})}var r,s,a,o=getBusinessObject(e).loopCharacteristics;return o&&(r=o.isSequential,s=void 0===o.isSequential,a=void 0!==o.isSequential&&!o.isSequential),{"toggle-parallel-mi":{className:"bpmn-icon-parallel-mi-marker",title:i("Parallel multi-instance"),active:a,action:n,options:{loopCharacteristics:"bpmn:MultiInstanceLoopCharacteristics",isSequential:!1}},"toggle-sequential-mi":{className:"bpmn-icon-sequential-mi-marker",title:i("Sequential multi-instance"),active:r,action:n,options:{loopCharacteristics:"bpmn:MultiInstanceLoopCharacteristics",isSequential:!0}},"toggle-loop":{className:"bpmn-icon-loop-marker",title:i("Loop"),active:s,action:n,options:{loopCharacteristics:"bpmn:StandardLoopCharacteristics"}}}},ReplaceMenuProvider.prototype._getCollectionHeaderEntries=function(e){var t=this,i=this._translate,n=e.businessObject.dataObjectRef;if(!n)return{};var r=n.isCollection;return{"toggle-is-collection":{className:"bpmn-icon-parallel-mi-marker",title:i("Collection"),active:r,action:function(i,r){t._modeling.updateModdleProperties(e,n,{isCollection:!r.active})}}}},ReplaceMenuProvider.prototype._getParticipantMultiplicityHeaderEntries=function(e){var t=this,i=this._bpmnFactory,n=this._translate,r=e.businessObject.participantMultiplicity;return{"toggle-participant-multiplicity":{className:"bpmn-icon-parallel-mi-marker",title:n("Participant multiplicity"),active:!!r,action:function(n,r){var s;r.active||(s=i.create("bpmn:ParticipantMultiplicity")),t._modeling.updateProperties(e,{participantMultiplicity:s})}}}},ReplaceMenuProvider.prototype._getAdHocHeaderEntries=function(e){var t=this._translate,i=getBusinessObject(e),n=is(i,"bpmn:AdHocSubProcess"),r=this._bpmnReplace.replaceElement;return{"toggle-adhoc":{className:"bpmn-icon-ad-hoc-marker",title:t("Ad-hoc"),active:n,action:function(t,i){return r(e,n?{type:"bpmn:SubProcess"}:{type:"bpmn:AdHocSubProcess"},{autoResize:!1,layoutConnection:!1})}}}},ReplaceMenuProvider.prototype._getNonInterruptingHeaderEntries=function(e){const t=this._translate,i=getBusinessObject(e),n=this,r=getInterruptingProperty(e),s=is(e,"bpmn:BoundaryEvent")?Icons["intermediate-event-non-interrupting"]:Icons["start-event-non-interrupting"],a=!i[r];return{"toggle-non-interrupting":{imageHtml:s,title:t("Toggle non-interrupting"),active:a,action:function(){n._modeling.updateProperties(e,{[r]:!!a})}}}};
+import {
+  getBusinessObject,
+  is
+} from '../../util/ModelUtil';
+
+import {
+  isEventSubProcess,
+  isExpanded
+} from '../../util/DiUtil';
+
+import {
+  isDifferentType
+} from './util/TypeUtil';
+
+import {
+  forEach,
+  filter,
+  isArray
+} from 'min-dash';
+
+import * as replaceOptions from '../replace/ReplaceOptions';
+import { canBeNonInterrupting, getInterruptingProperty } from '../modeling/behavior/util/NonInterruptingUtil';
+import Icons from './util/Icons';
+
+/**
+ * @typedef {import('../modeling/BpmnFactory').default} BpmnFactory
+ * @typedef {import('diagram-js/lib/features/popup-menu/PopupMenu').default} PopupMenu
+ * @typedef {import('../modeling/Modeling').default} Modeling
+ * @typedef {import('../replace/BpmnReplace').default} BpmnReplace
+ * @typedef {import('diagram-js/lib/features/Rules').default} Rules
+ * @typedef {import('diagram-js/lib/i18n/translate/translate').default} Translate
+ * @typedef {import('../copy-paste/ModdleCopy').default} ModdleCopy
+ *
+ * @typedef {import('../../model/Types').Element} Element
+ * @typedef {import('../../model/Types').Moddle} Moddle
+ *
+ * @typedef {import('diagram-js/lib/features/popup-menu/PopupMenuProvider').PopupMenuEntries} PopupMenuEntries
+ * @typedef {import('diagram-js/lib/features/popup-menu/PopupMenuProvider').PopupMenuEntry} PopupMenuEntry
+ * @typedef {import('diagram-js/lib/features/popup-menu/PopupMenuProvider').PopupMenuEntryAction} PopupMenuEntryAction
+ * @typedef {import('diagram-js/lib/features/popup-menu/PopupMenuProvider').PopupMenuHeaderEntries} PopupMenuHeaderEntries
+ * @typedef {import('diagram-js/lib/features/popup-menu/PopupMenuProvider').default} PopupMenuProvider
+ * @typedef {import('diagram-js/lib/features/popup-menu/PopupMenu').PopupMenuTarget} PopupMenuTarget
+ *
+ * @typedef {import('./ReplaceOptions').ReplaceOption} ReplaceOption
+ */
+
+/**
+ * A BPMN-specific popup menu provider.
+ *
+ * @implements {PopupMenuProvider}
+ *
+ * @param {BpmnFactory} bpmnFactory
+ * @param {PopupMenu} popupMenu
+ * @param {Modeling} modeling
+ * @param {Moddle} moddle
+ * @param {BpmnReplace} bpmnReplace
+ * @param {Rules} rules
+ * @param {Translate} translate
+ * @param {ModdleCopy} moddleCopy
+ */
+export default function ReplaceMenuProvider(
+    bpmnFactory, popupMenu, modeling, moddle,
+    bpmnReplace, rules, translate, moddleCopy) {
+
+  this._bpmnFactory = bpmnFactory;
+  this._popupMenu = popupMenu;
+  this._modeling = modeling;
+  this._moddle = moddle;
+  this._bpmnReplace = bpmnReplace;
+  this._rules = rules;
+  this._translate = translate;
+  this._moddleCopy = moddleCopy;
+
+  this._register();
+}
+
+ReplaceMenuProvider.$inject = [
+  'bpmnFactory',
+  'popupMenu',
+  'modeling',
+  'moddle',
+  'bpmnReplace',
+  'rules',
+  'translate',
+  'moddleCopy'
+];
+
+ReplaceMenuProvider.prototype._register = function() {
+  this._popupMenu.registerProvider('bpmn-replace', this);
+};
+
+/**
+ * @param {PopupMenuTarget} target
+ *
+ * @return {PopupMenuEntries}
+ */
+ReplaceMenuProvider.prototype.getPopupMenuEntries = function(target) {
+
+  var businessObject = target.businessObject;
+
+  var rules = this._rules;
+
+  var filteredReplaceOptions = [];
+
+  if (isArray(target) || !rules.allowed('shape.replace', { element: target })) {
+    return {};
+  }
+
+  var differentType = isDifferentType(target);
+
+  if (is(businessObject, 'bpmn:DataObjectReference')) {
+    return this._createEntries(target, replaceOptions.DATA_OBJECT_REFERENCE);
+  }
+
+  if (is(businessObject, 'bpmn:DataStoreReference') && !is(target.parent, 'bpmn:Collaboration')) {
+    return this._createEntries(target, replaceOptions.DATA_STORE_REFERENCE);
+  }
+
+  // start events outside sub processes
+  if (is(businessObject, 'bpmn:StartEvent') && !is(businessObject.$parent, 'bpmn:SubProcess')) {
+
+    filteredReplaceOptions = filter(replaceOptions.START_EVENT, differentType);
+
+    return this._createEntries(target, filteredReplaceOptions);
+  }
+
+  // expanded/collapsed pools
+  if (is(businessObject, 'bpmn:Participant')) {
+
+    filteredReplaceOptions = filter(replaceOptions.PARTICIPANT, function(replaceOption) {
+      return isExpanded(target) !== replaceOption.target.isExpanded;
+    });
+
+    return this._createEntries(target, filteredReplaceOptions);
+  }
+
+  // start events inside event sub processes
+  if (is(businessObject, 'bpmn:StartEvent') && isEventSubProcess(businessObject.$parent)) {
+    filteredReplaceOptions = filter(replaceOptions.EVENT_SUB_PROCESS_START_EVENT, function(replaceOption) {
+
+      var target = replaceOption.target;
+
+      var isInterrupting = target.isInterrupting !== false;
+
+      var isInterruptingEqual = businessObject.isInterrupting === isInterrupting;
+
+      // filters elements which types and event definition are equal but have have different interrupting types
+      return differentType(replaceOption) || !differentType(replaceOption) && !isInterruptingEqual;
+
+    });
+
+    return this._createEntries(target, filteredReplaceOptions);
+  }
+
+  // start events inside sub processes
+  if (is(businessObject, 'bpmn:StartEvent') && !isEventSubProcess(businessObject.$parent)
+      && is(businessObject.$parent, 'bpmn:SubProcess')) {
+    filteredReplaceOptions = filter(replaceOptions.START_EVENT_SUB_PROCESS, differentType);
+
+    return this._createEntries(target, filteredReplaceOptions);
+  }
+
+  // end events
+  if (is(businessObject, 'bpmn:EndEvent')) {
+
+    filteredReplaceOptions = filter(replaceOptions.END_EVENT, function(replaceOption) {
+      var target = replaceOption.target;
+
+      // hide cancel end events outside transactions
+      if (target.eventDefinitionType == 'bpmn:CancelEventDefinition' && !is(businessObject.$parent, 'bpmn:Transaction')) {
+        return false;
+      }
+
+      return differentType(replaceOption);
+    });
+
+    return this._createEntries(target, filteredReplaceOptions);
+  }
+
+  // boundary events
+  if (is(businessObject, 'bpmn:BoundaryEvent')) {
+
+    filteredReplaceOptions = filter(replaceOptions.BOUNDARY_EVENT, function(replaceOption) {
+
+      var target = replaceOption.target;
+
+      if (target.eventDefinitionType == 'bpmn:CancelEventDefinition' &&
+         !is(businessObject.attachedToRef, 'bpmn:Transaction')) {
+        return false;
+      }
+      var cancelActivity = target.cancelActivity !== false;
+
+      var isCancelActivityEqual = businessObject.cancelActivity == cancelActivity;
+
+      return differentType(replaceOption) || !differentType(replaceOption) && !isCancelActivityEqual;
+    });
+
+    return this._createEntries(target, filteredReplaceOptions);
+  }
+
+  // intermediate events
+  if (is(businessObject, 'bpmn:IntermediateCatchEvent') ||
+      is(businessObject, 'bpmn:IntermediateThrowEvent')) {
+
+    filteredReplaceOptions = filter(replaceOptions.INTERMEDIATE_EVENT, differentType);
+
+    return this._createEntries(target, filteredReplaceOptions);
+  }
+
+  // gateways
+  if (is(businessObject, 'bpmn:Gateway')) {
+
+    filteredReplaceOptions = filter(replaceOptions.GATEWAY, differentType);
+
+    return this._createEntries(target, filteredReplaceOptions);
+  }
+
+  // transactions
+  if (is(businessObject, 'bpmn:Transaction')) {
+
+    filteredReplaceOptions = filter(replaceOptions.TRANSACTION, differentType);
+
+    return this._createEntries(target, filteredReplaceOptions);
+  }
+
+  // expanded event sub processes
+  if (isEventSubProcess(businessObject) && isExpanded(target)) {
+
+    filteredReplaceOptions = filter(replaceOptions.EVENT_SUB_PROCESS, differentType);
+
+    return this._createEntries(target, filteredReplaceOptions);
+  }
+
+  // expanded sub processes
+  if (is(businessObject, 'bpmn:SubProcess') && isExpanded(target)) {
+
+    filteredReplaceOptions = filter(replaceOptions.SUBPROCESS_EXPANDED, differentType);
+
+    return this._createEntries(target, filteredReplaceOptions);
+  }
+
+  // collapsed ad hoc sub processes
+  if (is(businessObject, 'bpmn:AdHocSubProcess') && !isExpanded(target)) {
+
+    filteredReplaceOptions = filter(replaceOptions.TASK, function(replaceOption) {
+
+      var target = replaceOption.target;
+
+      var isTargetSubProcess = target.type === 'bpmn:SubProcess';
+
+      var isTargetExpanded = target.isExpanded === true;
+
+      return isDifferentType(target, target) && (!isTargetSubProcess || isTargetExpanded);
+    });
+
+    return this._createEntries(target, filteredReplaceOptions);
+  }
+
+  // sequence flows
+  if (is(businessObject, 'bpmn:SequenceFlow')) {
+    return this._createSequenceFlowEntries(target, replaceOptions.SEQUENCE_FLOW);
+  }
+
+  // flow nodes
+  if (is(businessObject, 'bpmn:FlowNode')) {
+    filteredReplaceOptions = filter(replaceOptions.TASK, differentType);
+
+    // collapsed sub process cannot be replaced with itself
+    if (is(businessObject, 'bpmn:SubProcess') && !isExpanded(target)) {
+      filteredReplaceOptions = filter(filteredReplaceOptions, function(replaceOption) {
+        return replaceOption.label !== 'Sub-process (collapsed)';
+      });
+    }
+
+    return this._createEntries(target, filteredReplaceOptions);
+  }
+
+  return {};
+};
+
+/**
+ * @param {PopupMenuTarget} target
+ *
+ * @return {PopupMenuHeaderEntries}
+ */
+ReplaceMenuProvider.prototype.getPopupMenuHeaderEntries = function(target) {
+
+  var headerEntries = {};
+
+  if (is(target, 'bpmn:Activity') && !isEventSubProcess(target)) {
+    headerEntries = {
+      ...headerEntries,
+      ...this._getLoopCharacteristicsHeaderEntries(target)
+    };
+  }
+
+  if (is(target, 'bpmn:DataObjectReference')) {
+    headerEntries = {
+      ...headerEntries,
+      ...this._getCollectionHeaderEntries(target)
+    };
+  }
+
+  if (is(target, 'bpmn:Participant')) {
+    headerEntries = {
+      ...headerEntries,
+      ...this._getParticipantMultiplicityHeaderEntries(target)
+    };
+  }
+
+  if (is(target, 'bpmn:SubProcess') &&
+      !is(target, 'bpmn:Transaction') &&
+      !isEventSubProcess(target)) {
+    headerEntries = {
+      ...headerEntries,
+      ...this._getAdHocHeaderEntries(target)
+    };
+  }
+
+  if (canBeNonInterrupting(target)) {
+    headerEntries = {
+      ...headerEntries,
+      ...this._getNonInterruptingHeaderEntries(target)
+    };
+  }
+
+  return headerEntries;
+};
+
+
+/**
+ * Create popup menu entries for the given target.
+ *
+ * @param  {PopupMenuTarget} target
+ * @param  {ReplaceOption[]} replaceOptions
+ *
+ * @return {PopupMenuEntries}
+ */
+ReplaceMenuProvider.prototype._createEntries = function(target, replaceOptions) {
+  var entries = {};
+
+  var self = this;
+
+  forEach(replaceOptions, function(replaceOption) {
+    entries[ replaceOption.actionName ] = self._createEntry(replaceOption, target);
+  });
+
+  return entries;
+};
+
+/**
+ * Creates popup menu entries for the given sequence flow.
+ *
+ * @param  {PopupMenuTarget} target
+ * @param  {ReplaceOption[]} replaceOptions
+ *
+ * @return {PopupMenuEntries}
+ */
+ReplaceMenuProvider.prototype._createSequenceFlowEntries = function(target, replaceOptions) {
+
+  var businessObject = getBusinessObject(target);
+
+  var entries = {};
+
+  var modeling = this._modeling,
+      moddle = this._moddle;
+
+  var self = this;
+
+  forEach(replaceOptions, function(replaceOption) {
+
+    switch (replaceOption.actionName) {
+    case 'replace-with-default-flow':
+      if (businessObject.sourceRef.default !== businessObject &&
+            (is(businessObject.sourceRef, 'bpmn:ExclusiveGateway') ||
+             is(businessObject.sourceRef, 'bpmn:InclusiveGateway') ||
+             is(businessObject.sourceRef, 'bpmn:ComplexGateway') ||
+             is(businessObject.sourceRef, 'bpmn:Activity'))) {
+
+        entries = {
+          ...entries,
+          [ replaceOption.actionName ]: self._createEntry(replaceOption, target, function() {
+            modeling.updateProperties(target.source, { default: businessObject });
+          })
+        };
+      }
+      break;
+    case 'replace-with-conditional-flow':
+      if (!businessObject.conditionExpression && is(businessObject.sourceRef, 'bpmn:Activity')) {
+
+        entries = {
+          ...entries,
+          [ replaceOption.actionName ]: self._createEntry(replaceOption, target, function() {
+            var conditionExpression = moddle.create('bpmn:FormalExpression', { body: '' });
+
+            modeling.updateProperties(target, { conditionExpression: conditionExpression });
+          })
+        };
+      }
+      break;
+    default:
+
+      // conditional flow -> sequence flow
+      if (is(businessObject.sourceRef, 'bpmn:Activity') && businessObject.conditionExpression) {
+        entries = {
+          ...entries,
+          [ replaceOption.actionName ]: self._createEntry(replaceOption, target, function() {
+            modeling.updateProperties(target, { conditionExpression: undefined });
+          })
+        };
+      }
+
+      // default flow -> sequence flow
+      if ((is(businessObject.sourceRef, 'bpmn:ExclusiveGateway') ||
+           is(businessObject.sourceRef, 'bpmn:InclusiveGateway') ||
+           is(businessObject.sourceRef, 'bpmn:ComplexGateway') ||
+           is(businessObject.sourceRef, 'bpmn:Activity')) &&
+           businessObject.sourceRef.default === businessObject) {
+        entries = {
+          ...entries,
+          [ replaceOption.actionName ]: self._createEntry(replaceOption, target, function() {
+            modeling.updateProperties(target.source, { default: undefined });
+          })
+        };
+      }
+    }
+  });
+
+  return entries;
+};
+
+/**
+ * Create a popup menu entry for the given replace option.
+ *
+ * @param  {ReplaceOption} replaceOption
+ * @param  {PopupMenuTarget} target
+ * @param  {PopupMenuEntryAction} [action]
+ *
+ * @return {PopupMenuEntry}
+ */
+ReplaceMenuProvider.prototype._createEntry = function(replaceOption, target, action) {
+  var translate = this._translate;
+  var replaceElement = this._bpmnReplace.replaceElement;
+
+  var replaceAction = function() {
+    return replaceElement(target, replaceOption.target);
+  };
+
+  var label = replaceOption.label;
+  if (label && typeof label === 'function') {
+    label = label(target);
+  }
+
+  action = action || replaceAction;
+
+  return {
+    label: translate(label),
+    className: replaceOption.className,
+    action: action
+  };
+};
+
+/**
+ * Get popup menu header entries for the loop characteristics of the given BPMN element.
+ *
+ * @param  {PopupMenuTarget} target
+ *
+ * @return {PopupMenuHeaderEntries}
+ */
+ReplaceMenuProvider.prototype._getLoopCharacteristicsHeaderEntries = function(target) {
+
+  var self = this;
+  var translate = this._translate;
+
+  function toggleLoopEntry(event, entry) {
+
+    // remove
+    if (entry.active) {
+      self._modeling.updateProperties(target, { loopCharacteristics: undefined });
+      return;
+    }
+
+    const currentLoopCharacteristics = target.businessObject.get('loopCharacteristics'),
+          newLoopCharacteristics = self._moddle.create(entry.options.loopCharacteristics);
+
+    // copy old properties
+    if (currentLoopCharacteristics) {
+      self._moddleCopy.copyElement(currentLoopCharacteristics, newLoopCharacteristics);
+    }
+
+    // update `isSequential` property
+    newLoopCharacteristics.set('isSequential', entry.options.isSequential);
+
+    self._modeling.updateProperties(target, { loopCharacteristics: newLoopCharacteristics });
+  }
+
+  var businessObject = getBusinessObject(target),
+      loopCharacteristics = businessObject.loopCharacteristics;
+
+  var isSequential,
+      isLoop,
+      isParallel;
+
+  if (loopCharacteristics) {
+    isSequential = loopCharacteristics.isSequential;
+    isLoop = loopCharacteristics.isSequential === undefined;
+    isParallel = loopCharacteristics.isSequential !== undefined && !loopCharacteristics.isSequential;
+  }
+
+
+  return {
+    'toggle-parallel-mi' : {
+      className: 'bpmn-icon-parallel-mi-marker',
+      title: translate('Parallel multi-instance'),
+      active: isParallel,
+      action: toggleLoopEntry,
+      options: {
+        loopCharacteristics: 'bpmn:MultiInstanceLoopCharacteristics',
+        isSequential: false
+      }
+    },
+    'toggle-sequential-mi': {
+      className: 'bpmn-icon-sequential-mi-marker',
+      title: translate('Sequential multi-instance'),
+      active: isSequential,
+      action: toggleLoopEntry,
+      options: {
+        loopCharacteristics: 'bpmn:MultiInstanceLoopCharacteristics',
+        isSequential: true
+      }
+    },
+    'toggle-loop': {
+      className: 'bpmn-icon-loop-marker',
+      title: translate('Loop'),
+      active: isLoop,
+      action: toggleLoopEntry,
+      options: {
+        loopCharacteristics: 'bpmn:StandardLoopCharacteristics'
+      }
+    }
+  };
+};
+
+/**
+ * Get popup menu header entries for the collection property of the given BPMN element.
+ *
+ * @param  {PopupMenuTarget} target
+ *
+ * @return {PopupMenuHeaderEntries}
+ */
+ReplaceMenuProvider.prototype._getCollectionHeaderEntries = function(target) {
+
+  var self = this;
+  var translate = this._translate;
+
+  var dataObject = target.businessObject.dataObjectRef;
+
+  if (!dataObject) {
+    return {};
+  }
+
+  function toggleIsCollection(event, entry) {
+    self._modeling.updateModdleProperties(
+      target,
+      dataObject,
+      { isCollection: !entry.active });
+  }
+
+  var isCollection = dataObject.isCollection;
+
+  return {
+    'toggle-is-collection': {
+      className: 'bpmn-icon-parallel-mi-marker',
+      title: translate('Collection'),
+      active: isCollection,
+      action: toggleIsCollection,
+    }
+  };
+};
+
+/**
+ * Get popup menu header entries for the participant multiplicity property of the given BPMN element.
+ *
+ * @param  {PopupMenuTarget} target
+ *
+ * @return {PopupMenuHeaderEntries}
+ */
+ReplaceMenuProvider.prototype._getParticipantMultiplicityHeaderEntries = function(target) {
+
+  var self = this;
+  var bpmnFactory = this._bpmnFactory;
+  var translate = this._translate;
+
+  function toggleParticipantMultiplicity(event, entry) {
+    var isActive = entry.active;
+    var participantMultiplicity;
+
+    if (!isActive) {
+      participantMultiplicity = bpmnFactory.create('bpmn:ParticipantMultiplicity');
+    }
+
+    self._modeling.updateProperties(
+      target,
+      { participantMultiplicity: participantMultiplicity });
+  }
+
+  var participantMultiplicity = target.businessObject.participantMultiplicity;
+
+  return {
+    'toggle-participant-multiplicity': {
+      className: 'bpmn-icon-parallel-mi-marker',
+      title: translate('Participant multiplicity'),
+      active: !!participantMultiplicity,
+      action: toggleParticipantMultiplicity,
+    }
+  };
+};
+
+/**
+ * Get popup menu header entries for the ad-hoc property of the given BPMN element.
+ *
+ * @param  {PopupMenuTarget} element
+ *
+ * @return {PopupMenuHeaderEntries}
+ */
+ReplaceMenuProvider.prototype._getAdHocHeaderEntries = function(element) {
+  var translate = this._translate;
+  var businessObject = getBusinessObject(element);
+
+  var isAdHoc = is(businessObject, 'bpmn:AdHocSubProcess');
+
+  var replaceElement = this._bpmnReplace.replaceElement;
+
+  return {
+    'toggle-adhoc': {
+      className: 'bpmn-icon-ad-hoc-marker',
+      title: translate('Ad-hoc'),
+      active: isAdHoc,
+      action: function(event, entry) {
+        if (isAdHoc) {
+          return replaceElement(element, { type: 'bpmn:SubProcess' }, {
+            autoResize: false,
+            layoutConnection: false
+          });
+        } else {
+          return replaceElement(element, { type: 'bpmn:AdHocSubProcess' }, {
+            autoResize: false,
+            layoutConnection: false
+          });
+        }
+      }
+    }
+  };
+};
+
+
+ReplaceMenuProvider.prototype._getNonInterruptingHeaderEntries = function(element) {
+  const translate = this._translate;
+  const businessObject = getBusinessObject(element);
+  const self = this;
+
+  const interruptingProperty = getInterruptingProperty(element);
+
+  const icon = is(element, 'bpmn:BoundaryEvent') ? Icons['intermediate-event-non-interrupting'] : Icons['start-event-non-interrupting'];
+
+  const isNonInterrupting = !businessObject[interruptingProperty];
+
+  return {
+    'toggle-non-interrupting': {
+      imageHtml: icon,
+      title: translate('Toggle non-interrupting'),
+      active: isNonInterrupting,
+      action: function() {
+        self._modeling.updateProperties(element, {
+          [interruptingProperty]: !!isNonInterrupting
+        });
+      }
+    }
+  };
+};

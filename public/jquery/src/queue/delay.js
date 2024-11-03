@@ -1,1 +1,23 @@
-define(["../core","../queue","../effects"],(function(e){"use strict";return e.fn.delay=function(n,t){return n=e.fx&&e.fx.speeds[n]||n,t=t||"fx",this.queue(t,(function(e,t){var u=window.setTimeout(e,n);t.stop=function(){window.clearTimeout(u)}}))},e.fn.delay}));
+define( [
+	"../core",
+	"../queue",
+	"../effects" // Delay is optional because of this dependency
+], function( jQuery ) {
+
+"use strict";
+
+// Based off of the plugin by Clint Helfers, with permission.
+jQuery.fn.delay = function( time, type ) {
+	time = jQuery.fx ? jQuery.fx.speeds[ time ] || time : time;
+	type = type || "fx";
+
+	return this.queue( type, function( next, hooks ) {
+		var timeout = window.setTimeout( next, time );
+		hooks.stop = function() {
+			window.clearTimeout( timeout );
+		};
+	} );
+};
+
+return jQuery.fn.delay;
+} );

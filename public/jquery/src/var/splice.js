@@ -1,1 +1,9 @@
-define(["./arr"],(function(e){"use strict";return e.splice}));
+define( [
+	"./arr"
+], function( arr ) {
+
+"use strict";
+
+return arr.splice;
+
+} );

@@ -1,1 +1,32 @@
-import{isAny}from"../modeling/util/ModelingUtil";export default function BpmnGridSnapping(n){n.on(["create.init","shape.move.init"],(function(n){var i=n.context,t=n.shape;isAny(t,["bpmn:Participant","bpmn:SubProcess","bpmn:TextAnnotation"])&&(i.gridSnappingContext||(i.gridSnappingContext={}),i.gridSnappingContext.snapLocation="top-left")}))}BpmnGridSnapping.$inject=["eventBus"];
+import { isAny } from '../modeling/util/ModelingUtil';
+
+/**
+ * @typedef {import('diagram-js/lib/core/EventBus').default} EventBus
+ */
+
+/**
+ * @param {EventBus} eventBus
+ */
+export default function BpmnGridSnapping(eventBus) {
+  eventBus.on([
+    'create.init',
+    'shape.move.init'
+  ], function(event) {
+    var context = event.context,
+        shape = event.shape;
+
+    if (isAny(shape, [
+      'bpmn:Participant',
+      'bpmn:SubProcess',
+      'bpmn:TextAnnotation'
+    ])) {
+      if (!context.gridSnappingContext) {
+        context.gridSnappingContext = {};
+      }
+
+      context.gridSnappingContext.snapLocation = 'top-left';
+    }
+  });
+}
+
+BpmnGridSnapping.$inject = [ 'eventBus' ];

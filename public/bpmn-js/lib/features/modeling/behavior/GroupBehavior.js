@@ -1,1 +1,333 @@
-import inherits from"inherits-browser";import CommandInterceptor from"diagram-js/lib/command/CommandInterceptor";import{getBusinessObject,is}from"../../../util/ModelUtil";import{createCategory,createCategoryValue,linkCategoryValue,unlinkCategory,unlinkCategoryValue}from"./util/CategoryUtil";var LOWER_PRIORITY=770;export default function GroupBehavior(e,t,r,a,n,o){function c(e,t,a){var n=r.filter((function(e){return is(e,"bpmn:Group")})).filter((function(e){return e.businessObject!==a}));t&&!function(e,t){return e.some((function(e){var r=getBusinessObject(e);return(r.categoryValueRef&&r.categoryValueRef.$parent)===t}))}(n,t)&&unlinkCategory(t),e&&!function(e,t){return e.some((function(e){return getBusinessObject(e).categoryValueRef===t}))}(n,e)&&unlinkCategoryValue(e)}function u(e,r){return linkCategoryValue(e,r,t.getDefinitions())}function i(r,a){var n=getBusinessObject(r),o=n.categoryValueRef;o||(o=n.categoryValueRef=a.categoryValue=a.categoryValue||createCategoryValue(e));var c=o.$parent;c||(c=o.$parent=a.category=a.category||createCategory(e)),u(o,c,t.getDefinitions())}function l(e,t){var r=t.category,a=t.categoryValue,n=getBusinessObject(e);a?(n.categoryValueRef=null,c(a,r,n)):c(null,n.categoryValueRef.$parent,n)}function s(t,r){var a=e.create(t.$type);return o.copyElement(t,a,null,r)}n.invoke(CommandInterceptor,this),this.execute("label.create",(function(e){var t=e.context,r=t.labelTarget;is(r,"bpmn:Group")&&i(r,t)})),this.revert("label.create",(function(e){var t=e.context,r=t.labelTarget;is(r,"bpmn:Group")&&l(r,t)})),this.execute("shape.delete",(function(e){var t=e.context,r=t.shape,a=getBusinessObject(r);if(is(r,"bpmn:Group")&&!r.labelTarget){var n=t.categoryValue=a.categoryValueRef;n&&(c(n,t.category=n.$parent,a),a.categoryValueRef=null)}})),this.reverted("shape.delete",(function(e){var t=e.context,r=t.shape;if(is(r,"bpmn:Group")&&!r.labelTarget){var a=t.category,n=t.categoryValue,o=getBusinessObject(r);n&&(o.categoryValueRef=n,u(n,a))}})),this.execute("shape.create",(function(e){var t=e.context,r=t.shape;is(r,"bpmn:Group")&&!r.labelTarget&&getBusinessObject(r).categoryValueRef&&i(r,t)})),this.reverted("shape.create",(function(e){var t=e.context,r=t.shape;is(r,"bpmn:Group")&&!r.labelTarget&&getBusinessObject(r).categoryValueRef&&l(r,t)})),a.on("copyPaste.copyElement",LOWER_PRIORITY,(function(e){var t=e.descriptor,r=e.element;if(is(r,"bpmn:Group")&&!r.labelTarget){var a=getBusinessObject(r);if(a.categoryValueRef){var n=a.categoryValueRef;t.categoryValue=s(n,!0),n.$parent&&(t.category=s(n.$parent,!0))}}})),a.on("copyPaste.pasteElement",LOWER_PRIORITY,(function(e){var t=e.descriptor,r=t.businessObject,a=t.categoryValue,n=t.category;a&&(a=r.categoryValueRef=s(a)),n&&(a.$parent=s(n)),delete t.category,delete t.categoryValue}))}GroupBehavior.$inject=["bpmnFactory","bpmnjs","elementRegistry","eventBus","injector","moddleCopy"],inherits(GroupBehavior,CommandInterceptor);
+import inherits from 'inherits-browser';
+
+import CommandInterceptor from 'diagram-js/lib/command/CommandInterceptor';
+
+import {
+  getBusinessObject,
+  is
+} from '../../../util/ModelUtil';
+
+import {
+  createCategory,
+  createCategoryValue,
+  linkCategoryValue,
+  unlinkCategory,
+  unlinkCategoryValue
+} from './util/CategoryUtil';
+
+/**
+ * @typedef {import('../BpmnFactory').default} BpmnFactory
+ * @typedef {import('../../../Modeler').default} Modeler
+ * @typedef {import('diagram-js/lib/core/ElementRegistry').default} ElementRegistry
+ * @typedef {import('diagram-js/lib/core/EventBus').default} EventBus
+ * @typedef {import('didi').Injector} Injector
+ * @typedef {import('../../copy-paste/ModdleCopy').default} ModdleCopy
+ *
+ * @typedef {import('../../../model/Types').Element} Element
+ * @typedef {import('../../../model/Types').Shape} Shape
+ *
+ * @typedef {import('diagram-js/lib/util/Types').DirectionTRBL} DirectionTRBL
+ */
+
+var LOWER_PRIORITY = 770;
+
+
+/**
+ * BPMN specific group behavior.
+ *
+ * @param {BpmnFactory} bpmnFactory
+ * @param {Modeler} bpmnjs
+ * @param {ElementRegistry} elementRegistry
+ * @param {EventBus} eventBus
+ * @param {Injector} injector
+ * @param {ModdleCopy} moddleCopy
+ */
+export default function GroupBehavior(
+    bpmnFactory,
+    bpmnjs,
+    elementRegistry,
+    eventBus,
+    injector,
+    moddleCopy
+) {
+  injector.invoke(CommandInterceptor, this);
+
+  /**
+   * Returns all group element in the current registry.
+   *
+   * @return {Shape[]}
+   */
+  function getGroupElements() {
+    return elementRegistry.filter(function(e) {
+      return is(e, 'bpmn:Group');
+    });
+  }
+
+  /**
+   * Returns true if given category is referenced in one of the given elements.
+   *
+   * @param {Element[]} elements
+   * @param {ModdleElement} category
+   *
+   * @return {boolean}
+   */
+  function isReferencedCategory(elements, category) {
+    return elements.some(function(element) {
+      var businessObject = getBusinessObject(element);
+
+      var _category = businessObject.categoryValueRef && businessObject.categoryValueRef.$parent;
+
+      return _category === category;
+    });
+  }
+
+  /**
+   * Returns true if given categoryValue is referenced in one of the given elements.
+   *
+   * @param {Element[]} elements
+   * @param {ModdleElement} categoryValue
+   *
+   * @return {boolean}
+   */
+  function isReferencedCategoryValue(elements, categoryValue) {
+    return elements.some(function(element) {
+      var businessObject = getBusinessObject(element);
+
+      return businessObject.categoryValueRef === categoryValue;
+    });
+  }
+
+  /**
+   * Remove category value unless it is still referenced.
+   *
+   * @param {ModdleElement} categoryValue
+   * @param {ModdleElement} category
+   * @param {ModdleElement} businessObject
+   */
+  function removeCategoryValue(categoryValue, category, businessObject) {
+
+    var groups = getGroupElements().filter(function(element) {
+      return element.businessObject !== businessObject;
+    });
+
+    if (category && !isReferencedCategory(groups, category)) {
+      unlinkCategory(category);
+    }
+
+    if (categoryValue && !isReferencedCategoryValue(groups, categoryValue)) {
+      unlinkCategoryValue(categoryValue);
+    }
+  }
+
+  /**
+   * Add category value.
+   *
+   * @param {ModdleElement} categoryValue
+   * @param {ModdleElement} category
+   *
+   * @return {ModdleElement}
+   */
+  function addCategoryValue(categoryValue, category) {
+    return linkCategoryValue(categoryValue, category, bpmnjs.getDefinitions());
+  }
+
+  function setCategoryValue(element, context) {
+    var businessObject = getBusinessObject(element),
+        categoryValue = businessObject.categoryValueRef;
+
+    if (!categoryValue) {
+      categoryValue =
+      businessObject.categoryValueRef =
+      context.categoryValue = (
+        context.categoryValue || createCategoryValue(bpmnFactory)
+      );
+    }
+
+    var category = categoryValue.$parent;
+
+    if (!category) {
+      category =
+      categoryValue.$parent =
+      context.category = (
+        context.category || createCategory(bpmnFactory)
+      );
+    }
+
+    addCategoryValue(categoryValue, category, bpmnjs.getDefinitions());
+  }
+
+  function unsetCategoryValue(element, context) {
+    var category = context.category,
+        categoryValue = context.categoryValue,
+        businessObject = getBusinessObject(element);
+
+    if (categoryValue) {
+      businessObject.categoryValueRef = null;
+
+      removeCategoryValue(categoryValue, category, businessObject);
+    } else {
+      removeCategoryValue(null, businessObject.categoryValueRef.$parent, businessObject);
+    }
+  }
+
+
+  // ensure category + value exist before label editing
+
+  this.execute('label.create', function(event) {
+    var context = event.context,
+        labelTarget = context.labelTarget;
+
+    if (!is(labelTarget, 'bpmn:Group')) {
+      return;
+    }
+
+    setCategoryValue(labelTarget, context);
+  });
+
+  this.revert('label.create', function(event) {
+    var context = event.context,
+        labelTarget = context.labelTarget;
+
+    if (!is(labelTarget, 'bpmn:Group')) {
+      return;
+    }
+
+    unsetCategoryValue(labelTarget, context);
+  });
+
+
+  // remove referenced category + value when group was deleted
+
+  this.execute('shape.delete', function(event) {
+
+    var context = event.context,
+        shape = context.shape,
+        businessObject = getBusinessObject(shape);
+
+    if (!is(shape, 'bpmn:Group') || shape.labelTarget) {
+      return;
+    }
+
+    var categoryValue = context.categoryValue = businessObject.categoryValueRef,
+        category;
+
+    if (categoryValue) {
+      category = context.category = categoryValue.$parent;
+
+      removeCategoryValue(categoryValue, category, businessObject);
+
+      businessObject.categoryValueRef = null;
+    }
+  });
+
+  this.reverted('shape.delete', function(event) {
+
+    var context = event.context,
+        shape = context.shape;
+
+    if (!is(shape, 'bpmn:Group') || shape.labelTarget) {
+      return;
+    }
+
+    var category = context.category,
+        categoryValue = context.categoryValue,
+        businessObject = getBusinessObject(shape);
+
+    if (categoryValue) {
+      businessObject.categoryValueRef = categoryValue;
+
+      addCategoryValue(categoryValue, category);
+    }
+  });
+
+
+  // create new category + value when group was created
+
+  this.execute('shape.create', function(event) {
+    var context = event.context,
+        shape = context.shape;
+
+    if (!is(shape, 'bpmn:Group') || shape.labelTarget) {
+      return;
+    }
+
+    if (getBusinessObject(shape).categoryValueRef) {
+      setCategoryValue(shape, context);
+    }
+  });
+
+  this.reverted('shape.create', function(event) {
+
+    var context = event.context,
+        shape = context.shape;
+
+    if (!is(shape, 'bpmn:Group') || shape.labelTarget) {
+      return;
+    }
+
+    if (getBusinessObject(shape).categoryValueRef) {
+      unsetCategoryValue(shape, context);
+    }
+  });
+
+
+  // copy + paste categoryValueRef with group
+
+  function copy(bo, clone) {
+    var targetBo = bpmnFactory.create(bo.$type);
+
+    return moddleCopy.copyElement(bo, targetBo, null, clone);
+  }
+
+  eventBus.on('copyPaste.copyElement', LOWER_PRIORITY, function(context) {
+    var descriptor = context.descriptor,
+        element = context.element;
+
+    if (!is(element, 'bpmn:Group') || element.labelTarget) {
+      return;
+    }
+
+    var groupBo = getBusinessObject(element);
+
+    if (groupBo.categoryValueRef) {
+
+      var categoryValue = groupBo.categoryValueRef;
+
+      descriptor.categoryValue = copy(categoryValue, true);
+
+      if (categoryValue.$parent) {
+        descriptor.category = copy(categoryValue.$parent, true);
+      }
+    }
+  });
+
+  eventBus.on('copyPaste.pasteElement', LOWER_PRIORITY, function(context) {
+    var descriptor = context.descriptor,
+        businessObject = descriptor.businessObject,
+        categoryValue = descriptor.categoryValue,
+        category = descriptor.category;
+
+    if (categoryValue) {
+      categoryValue = businessObject.categoryValueRef = copy(categoryValue);
+    }
+
+    if (category) {
+      categoryValue.$parent = copy(category);
+    }
+
+    delete descriptor.category;
+    delete descriptor.categoryValue;
+  });
+
+}
+
+GroupBehavior.$inject = [
+  'bpmnFactory',
+  'bpmnjs',
+  'elementRegistry',
+  'eventBus',
+  'injector',
+  'moddleCopy'
+];
+
+inherits(GroupBehavior, CommandInterceptor);
