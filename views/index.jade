@@ -14,10 +14,10 @@ html(lang="en")
     button(onclick="generateDiagram(false)") Generate Diagram
     button(onclick="generateDiagram(true)") Update Diagram
     div#diagram
-      a#copySvgLink(href="javascript:void(0);", onclick="copySvgToClipboard()") Copy SVG
+      a#copySvgLink(href="javascript:void(0);", onclick="copySvgToClipboard()", style='display: none;') Copy SVG
       div#diagramOutput
     div#encodedDiagramContainer
-      a#copyLink(href="javascript:void(0);", onclick="copyDecodedDiagram()") Copy
+      a#copyLink(href="javascript:void(0);", onclick="copyDecodedDiagram()", style='display: none;') Copy
       div#encodedDiagram
 
     script.
@@ -41,6 +41,8 @@ html(lang="en")
             document.getElementById('encodedDiagram').innerText = decodedDiagram;
             document.getElementById('diagramOutput').innerHTML = svgData;
             lastGeneratedDiagram = encodedDiagram; // Store the last generated diagram for future updates
+            document.getElementById('copySvgLink').style.display = 'inline';
+            document.getElementById('copyLink').style.display = 'inline';
           } else {
             console.error('Failed to generate diagram');
           }
