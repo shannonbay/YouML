@@ -4,7 +4,7 @@ const CopyWebpackPlugin = require('copy-webpack-plugin');
 module.exports = {
   entry: './public/javascripts/youml.js',  // Your JavaScript entry point
   output: {
-    path: path.resolve(__dirname, 'public'),
+    path: path.resolve(__dirname, 'public/dist'),
     filename: 'app.bundle.js',  // The bundled JavaScript output file
   },
   module: {
@@ -29,7 +29,7 @@ module.exports = {
         { from: 'node_modules/bpmn-js/lib', to: 'bpmn-js/lib' }, // Copy necessary assets
         { from: 'node_modules/jquery', to: 'jquery' }, // Copy necessary assets
         { from: 'node_modules/plantuml-encoder', to: 'plantuml-encoder' }, // Copy necessary assets
-
+        { from: 'node_modules/html2canvas', to: 'html2canvas' }, // Copy necessary assets
       ],
     }),
   ],

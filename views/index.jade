@@ -4,7 +4,8 @@ html(lang="en")
     meta(charset="UTF-8")
     meta(name="viewport" content="width=device-width, initial-scale=1.0")
     title YouML Diagram Generator
-    script(src="/plantuml-encoder/dist/plantuml-decoder.min.js") // Update the path to point to the correct location in your public folder
+    script(src="/dist/plantuml-encoder/dist/plantuml-decoder.min.js") // Update the path to point to the correct location in your public folder
+    script(src="/dist/html2canvas/dist/html2canvas.min.js") // Update the path to point to the correct location in your public folder
   body
     div(style='display: flex; align-items: center;')
       img(src='/images/logo.webp', alt='Icon', style='vertical-align: middle; margin-right: 10px; width: 80px; height: 80px;')
@@ -12,7 +13,9 @@ html(lang="en")
     textarea#umlPrompt(rows="4", cols="50", placeholder="Describe your UML diagram...")
     button(onclick="generateDiagram(false)") Generate Diagram
     button(onclick="generateDiagram(true)") Update Diagram
-    div#diagramOutput
+    div#diagram
+      a#copySvgLink(href="javascript:void(0);", onclick="copySvgToClipboard()") Copy SVG
+      div#diagramOutput
     div#encodedDiagramContainer
       a#copyLink(href="javascript:void(0);", onclick="copyDecodedDiagram()") Copy
       div#encodedDiagram
@@ -44,6 +47,27 @@ html(lang="en")
         } catch (error) {
           console.error('Error:', error);
         }
+      }
+
+      function copySvgToClipboard() {
+        const svg = document.getElementById('diagramOutput');
+
+        html2canvas(svg).then(function(canvas) {
+          canvas.toBlob(function(blob) {
+            navigator.clipboard
+              .write([
+              new ClipboardItem(
+                Object.defineProperty({}, blob.type, {
+                  value: blob,
+                  enumerable: true
+                })
+              )
+            ])
+            .then(function() {
+              console.log("Copied to clipboard");
+            });
+          });
+        });
       }
 
       function copyDecodedDiagram() {
