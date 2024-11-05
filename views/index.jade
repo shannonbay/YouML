@@ -12,8 +12,7 @@ html(lang="en")
       img(src='/images/logo.webp', alt='Icon', style='vertical-align: middle; margin-right: 10px; width: 80px; height: 80px;')
       h1 YouML Diagram Generator
     textarea#umlPrompt(rows="4", cols="50") sequence diagram. expressjs, frontend, send natural language diagram descriptions to api which first calls OpenAI API to generate plantUML, then invokes plantUML.com to generate the actual diagram image, and renders the image on the page. !theme amiga
-    button(onclick="generateDiagram(false)") Generate Diagram
-    button(onclick="generateDiagram(true)") Update Diagram
+    button#generateButton(onclick="generateDiagram(lastGeneratedDiagram)") Generate Diagram
     div#diagram
       a#copySvgLink(href="javascript:void(0);", onclick="copySvgToClipboard()", style='display: none;') Copy SVG
       div#diagramOutput
@@ -51,6 +50,8 @@ html(lang="en")
             document.getElementById('copyLink').style.display = 'inline';
             document.getElementById('umlPrompt').innerText = '';
 
+            // Update button text if there's a generated diagram
+            updateButtonText();
           } else {
             console.error('Failed to generate diagram');
           }
@@ -87,4 +88,13 @@ html(lang="en")
         }).catch(err => {
           console.error('Failed to copy text: ', err);
         });
+      }
+
+      function updateButtonText() {
+        const button = document.getElementById('generateButton');
+        if (lastGeneratedDiagram) {
+          button.innerText = 'Update Diagram';
+        } else {
+          button.innerText = 'Generate Diagram';
+        }
       }

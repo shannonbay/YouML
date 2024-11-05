@@ -96,9 +96,9 @@ app.post('/generate-uml', authenticateGuest, async (req, res) => {
     let keywords = `Valid PlantUML keywords: \n\`\`\`ascii\n${data}\n\`\`\`\n`;
     if (isUpdate && lastPlantUmlCode) {
       const decodedLastPlantUML = plantumlEncoder.decode(lastPlantUmlCode);
-      finalPrompt = `Here is the existing PlantUML diagram:\n\`\`\`plantuml\n${decodedLastPlantUML}\n\`\`\`\nPlease make the following changes, ensuring no syntax errors: ${prompt}`;
+      finalPrompt = `${keywords}\nHere is the existing PlantUML diagram:\n\`\`\`plantuml\n${decodedLastPlantUML}\n\`\`\`\nPlease make the following changes, ensuring no syntax errors: ${prompt}`;
     } else {
-      finalPrompt = `Generate a valid PlantUML diagram for: ${prompt}. It should be free from syntax errors.`;
+      finalPrompt = `${keywords}\nGenerate a valid PlantUML diagram for: ${prompt}. It should be free from syntax errors.`;
     }
 
     console.log('Final prompt:', finalPrompt);
