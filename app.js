@@ -70,7 +70,10 @@ function authenticateGuest(req, res, next) {
     req.user = verified; // Add user info (in this case, guest) to the request
     next();
   } catch (err) {
-    return res.status(401).send('Invalid Token');
+    // just issue them a new token
+    const guestToken = jwt.sign({ role: 'guest' }, SECRET_KEY, { expiresIn: '1h' });
+    res.cookie('guestToken', guestToken, { httpOnly: true, secure: false }); // Secure should be true for HTTPS
+    next()
   }
 }
 
