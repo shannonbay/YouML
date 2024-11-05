@@ -1,11 +1,12 @@
 doctype html
 html(lang="en")
   head
+    link(rel="stylesheet", href="/stylesheets/style.css")
     meta(charset="UTF-8")
     meta(name="viewport" content="width=device-width, initial-scale=1.0")
     title YouML Diagram Generator
-    script(src="/dist/plantuml-encoder/dist/plantuml-decoder.min.js") // Update the path to point to the correct location in your public folder
-    script(src="/dist/html2canvas/dist/html2canvas.min.js") // Update the path to point to the correct location in your public folder
+    script(src="/dist/plantuml-encoder/dist/plantuml-decoder.min.js")
+    script(src="/dist/html2canvas/dist/html2canvas.min.js")
   body
     div(style='display: flex; align-items: center;')
       img(src='/images/logo.webp', alt='Icon', style='vertical-align: middle; margin-right: 10px; width: 80px; height: 80px;')
@@ -26,13 +27,18 @@ html(lang="en")
       async function generateDiagram(isUpdate) {
         const prompt = document.getElementById('umlPrompt').value;
 
+        const requestBody = {
+          prompt,
+          isUpdate,
+          lastPlantUmlCode: lastGeneratedDiagram
+        };
         try {
           const response = await fetch('/generate-uml', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ prompt, isUpdate, lastPlantUmlCode: lastGeneratedDiagram }),
+            body: JSON.stringify(requestBody),
           });
 
           if (response.ok) {

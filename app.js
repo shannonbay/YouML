@@ -1,13 +1,17 @@
-var createError = require('http-errors');
-var express = require('express');
-var path = require('path');
-var cookieParser = require('cookie-parser');
-var logger = require('morgan');
+const createError = require('http-errors');
+const express = require('express');
+const path = require('path');
+const cookieParser = require('cookie-parser');
+const jwt = require('jsonwebtoken');
+const logger = require('morgan');
 
-var indexRouter = require('./routes/index');
-var usersRouter = require('./routes/users');
+const indexRouter = require('./routes/index');
+const usersRouter = require('./routes/users');
 
-var app = express();
+const app = express();
+app.use(cookieParser());
+
+const SECRET_KEY = process.env.SECRET_KEY; // Replace with a secure secret
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -43,9 +47,36 @@ function extractCodeBlock(response) {
 
 const fs = require('fs');
 
-app.post('/generate-uml', async (req, res) => {
+// Middleware to issue a JWT to a guest user
+app.use((req, res, next) => {
+  if (!req.cookies.guestToken) {
+    // Create a new token for the guest user
+    const guestToken = jwt.sign({ role: 'guest' }, SECRET_KEY, { expiresIn: '1h' });
+    res.cookie('guestToken', guestToken, { httpOnly: true, secure: false }); // Secure should be true for HTTPS
+  }
+  next();
+});
+
+// Middleware to verify the guest token
+function authenticateGuest(req, res, next) {
+  const token = req.cookies.guestToken;
+
+  if (!token) {
+    return res.status(401).send('Access Denied: No Token Provided');
+  }
+
   try {
-    const { prompt, isUpdate } = req.body;
+    const verified = jwt.verify(token, SECRET_KEY);
+    req.user = verified; // Add user info (in this case, guest) to the request
+    next();
+  } catch (err) {
+    return res.status(401).send('Invalid Token');
+  }
+}
+
+app.post('/generate-uml', authenticateGuest, async (req, res) => {
+  try {
+    const { prompt, isUpdate, lastPlantUmlCode } = req.body;
 
     // Define the path to the file
     const filePath = path.join(__dirname, 'resources', 'plantUML-keywords.txt');
@@ -61,9 +92,10 @@ app.post('/generate-uml', async (req, res) => {
     let finalPrompt = prompt;
     let keywords = `Valid PlantUML keywords: \n\`\`\`ascii\n${data}\n\`\`\`\n`;
     if (isUpdate && lastPlantUmlCode) {
-      finalPrompt = `${keywords}Here is the existing PlantUML diagram:\n\`\`\`plantuml\n${lastPlantUmlCode}\n\`\`\`\nPlease make the following changes, ensuring no syntax errors: ${prompt}`;
+      const decodedLastPlantUML = plantumlEncoder.decode(lastPlantUmlCode);
+      finalPrompt = `Here is the existing PlantUML diagram:\n\`\`\`plantuml\n${decodedLastPlantUML}\n\`\`\`\nPlease make the following changes, ensuring no syntax errors: ${prompt}`;
     } else {
-      finalPrompt = `${keywords}Generate a valid PlantUML diagram for: ${prompt}. It should be free from syntax errors.`;
+      finalPrompt = `Generate a valid PlantUML diagram for: ${prompt}. It should be free from syntax errors.`;
     }
 
     console.log('Final prompt:', finalPrompt);
@@ -80,9 +112,7 @@ app.post('/generate-uml', async (req, res) => {
     console.log(plantUmlCode);
 
     if (plantUmlCode) {
-      // Update the last diagram
-      lastPlantUmlCode = plantUmlCode;
-
+      
       // Step 2: Encode the PlantUML code
       const encodedPlantUml = plantumlEncoder.encode(plantUmlCode);
 
