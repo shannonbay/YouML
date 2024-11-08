@@ -5,14 +5,17 @@ html(lang="en")
     meta(charset="UTF-8")
     meta(name="viewport" content="width=device-width, initial-scale=1.0")
     title YouML Diagram Generator
-    script(src="/dist/plantuml-encoder/dist/plantuml-decoder.min.js")
-    script(src="/dist/html2canvas/dist/html2canvas.min.js")
   body
     div(style='display: flex; align-items: center;')
       img(src='/images/logo.webp', alt='Icon', style='vertical-align: middle; margin-right: 10px; width: 80px; height: 80px;')
       h1 YouML Diagram Generator
+    p Describe your diagram in natural language (any language!)
     textarea#umlPrompt(rows="4", cols="50") sequence diagram. expressjs, frontend, send natural language diagram descriptions to api which first calls OpenAI API to generate plantUML, then invokes plantUML.com to generate the actual diagram image, and renders the image on the page. !theme amiga
-    button#generateButton(onclick="generateDiagram(lastGeneratedDiagram)") Generate Diagram
+    button#generateButton(onclick="generateDiagram()") Generate Diagram
+    p Or upload a sketch of your diagram
+    div#upload
+      input#imageUpload(type="file", accept="image/*")
+      button#uploadImageButton(onclick="uploadImage()") Upload Image
     div#diagram
       a#copySvgLink(href="javascript:void(0);", onclick="copySvgToClipboard()", style='display: none;') Copy SVG
       div#diagramOutput
@@ -20,15 +23,56 @@ html(lang="en")
       a#copyLink(href="javascript:void(0);", onclick="copyDecodedDiagram()", style='display: none;') Copy
       div#encodedDiagram
 
+    script(src="/dist/plantuml-encoder/dist/plantuml-decoder.min.js")
+    script(src="/dist/html2canvas/dist/html2canvas.min.js")
     script.
       let lastGeneratedDiagram = null;
 
-      async function generateDiagram(isUpdate) {
+      async function uploadImage() {
+        const fileInput = document.getElementById('imageUpload');
+        const file = fileInput.files[0];
+
+        if (!file) {
+          alert("Please select an image to upload.");
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append('image', file);
+        formData.append('instructions', 'Describe the pertinent details of this diagram, including all elements, their relationships and the layout.');
+
+        try {
+          const response = await fetch('/upload-image', {
+            method: 'POST',
+            body: formData
+          });
+
+          if (response.ok) {
+            const { svgData, encodedDiagram } = await response.json();
+            const decodedDiagram = plantumlEncoder.decode(encodedDiagram);
+            document.getElementById('encodedDiagram').innerText = decodedDiagram;
+            document.getElementById('diagramOutput').innerHTML = svgData;
+            lastGeneratedDiagram = encodedDiagram; // Store the last generated diagram for future updates
+            document.getElementById('copySvgLink').style.display = 'inline';
+            document.getElementById('copyLink').style.display = 'inline';
+            document.getElementById('umlPrompt').value = ''; // Fixed clearing value
+
+            // Update button text if there's a generated diagram
+            updateButtonText();
+          } else {
+            console.error('Failed to generate diagram');
+          }
+        } catch (error) {
+          console.error('Error:', error);
+        }
+      }
+
+      async function generateDiagram() {
         const prompt = document.getElementById('umlPrompt').value;
 
         const requestBody = {
           prompt,
-          isUpdate,
+          isUpdate: !!lastGeneratedDiagram,
           lastPlantUmlCode: lastGeneratedDiagram
         };
         try {
@@ -48,7 +92,7 @@ html(lang="en")
             lastGeneratedDiagram = encodedDiagram; // Store the last generated diagram for future updates
             document.getElementById('copySvgLink').style.display = 'inline';
             document.getElementById('copyLink').style.display = 'inline';
-            document.getElementById('umlPrompt').innerText = '';
+            document.getElementById('umlPrompt').value = ''; // Fixed clearing value
 
             // Update button text if there's a generated diagram
             updateButtonText();
@@ -67,18 +111,19 @@ html(lang="en")
           canvas.toBlob(function(blob) {
             navigator.clipboard
               .write([
-              new ClipboardItem(
-                Object.defineProperty({}, blob.type, {
-                  value: blob,
-                  enumerable: true
-                })
-              )
-            ])
-            .then(function() {
-              console.log("Copied to clipboard");
-            });
+                new ClipboardItem(
+                  Object.defineProperty({}, blob.type, {
+                    value: blob,
+                    enumerable: true
+                  })
+                )
+              ])
+              .then(function() {
+                console.log("Copied to clipboard");
+              })
+              .catch((err) => console.error('Clipboard error: ', err));
           });
-        });
+        }).catch((err) => console.error('HTML2Canvas error: ', err));
       }
 
       function copyDecodedDiagram() {
@@ -92,9 +137,5 @@ html(lang="en")
 
       function updateButtonText() {
         const button = document.getElementById('generateButton');
-        if (lastGeneratedDiagram) {
-          button.innerText = 'Update Diagram';
-        } else {
-          button.innerText = 'Generate Diagram';
-        }
+        button.innerText = lastGeneratedDiagram ? 'Update Diagram' : 'Generate Diagram';
       }

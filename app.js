@@ -4,6 +4,7 @@ const path = require('path');
 const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
 const logger = require('morgan');
+const multer = require('multer');
 
 const indexRouter = require('./routes/index');
 const usersRouter = require('./routes/users');
@@ -76,6 +77,61 @@ function authenticateGuest(req, res, next) {
     next()
   }
 }
+
+app.use(express.json({ limit: '10mb' })); // Increase payload limit for base64 images
+
+// Configure multer to handle file uploads
+const upload = multer({ storage: multer.memoryStorage() });
+
+app.post('/upload-image', authenticateGuest, upload.single('image'), async (req, res) => {
+  console.log("upload-image Received POST");
+
+  if (!req.file || !req.body.instructions) {
+    return res.status(400).json({ error: 'No file or instructions provided' });
+  }
+
+  try {
+    // Logging the data
+    console.log("Image received");
+    console.log("Instructions: ", req.body.instructions);
+
+    // Use a fixed URL for the image (reverting to URL-based approach)
+    const imageUrl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg';
+
+    const openaiResponse = await openai.chat.completions.create({
+      model: 'gpt-4o-2024-08-06',
+      messages: [{ role: 'user', content: [{"type": "text", "text": "What’s in this image?"},
+        {
+          "type": "image_url",
+          "image_url": {
+            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg",
+            "detail": "high"
+          },
+        },] }],
+      max_tokens: 1500,
+    });
+   
+    console.log(openaiResponse.choices[0].message);
+    res.json({
+      svgData: null,
+      encodedDiagram: openaiResponse.choices[0].message.content
+    });
+  } catch (error) {
+    console.error('Error while sending image to OpenAI:', error);
+    res.status(500).json({ error: 'Failed to analyze image with OpenAI API' });
+  }
+});
+
+// Make sure to define authenticateGuest
+function authenticateGuest(req, res, next) {
+  // Authentication logic here
+  next();
+}
+
+app.listen(3000, () => {
+  console.log('Server started on port 3000');
+});
+
 
 app.post('/generate-uml', authenticateGuest, async (req, res) => {
   try {
